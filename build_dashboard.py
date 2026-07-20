@@ -26,25 +26,30 @@ CPVS = [
 
 
 def fetch_open_notices():
-    """All audit notices whose submission deadline is today or later."""
+    """Fetch recent audit notices, then keep only the ones still open to bid."""
     body = {
         "cpvItems": CPVS,
-        "finalDateFrom": date.today().isoformat(),   # deadline not yet passed
+        # Proven-working filter: registration-date window (server caps it at 180 days).
+        "dateFrom": (date.today() - timedelta(days=179)).isoformat(),
     }
-    items, page = [], 0
+    raw, page = [], 0
     while True:
         r = requests.post(f"{NOTICE_URL}?page={page}", json=body,
                           headers={"Accept": "application/json"}, timeout=60)
         r.raise_for_status()
         data = r.json()
         for n in data.get("content", []):
-            items.append(to_item(n))
+            raw.append(to_item(n))
         if data.get("last", True):
             break
         page += 1
         if page > 30:   # safety valve
             break
-    return items
+    # Keep only tenders whose deadline hasn't passed. We filter here in Python
+    # (not via the API) because the server rejects the deadline parameter in
+    # some date formats — this way is reliable.
+    today = date.today().isoformat()
+    return [t for t in raw if t.get("deadline") and t["deadline"][:10] >= today]
 
 
 def to_item(n):
