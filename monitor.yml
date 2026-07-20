@@ -1,0 +1,41 @@
+name: Audit Tender Monitor
+
+on:
+  schedule:
+    # Runs every 30 minutes. GitHub often runs scheduled jobs a few
+    # minutes late — that's normal and fine for this use case.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:   # lets you press "Run workflow" manually to test
+
+permissions:
+  contents: write      # needed so the job can save seen_adas.json back
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run the monitor
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python monitor.py
+
+      - name: Save the "seen" list for next time
+        run: |
+          git config user.name "tender-bot"
+          git config user.email "tender-bot@users.noreply.github.com"
+          git add seen_adas.json
+          git commit -m "Update seen tenders" || echo "Nothing new to save"
+          git push
