@@ -12,7 +12,7 @@
     --ink:#0f2537;--ink-2:#16344c;--page:#e9edf1;--card:#fff;--text:#14202b;
     --muted:#63748a;--hair:#dbe1e8;--signal:#b0791f;--signal-bg:#f7edd7;
     --link:#1f6f6b;--link-ink:#155551;--live:#5bd6a6;--tag:#2c4a66;--tag-bg:#e7edf3;
-    --hot:#b23b2e;--hot-bg:#f7e0dc;--warn:#9a6a12;--warn-bg:#f6ecd2;
+    --hot:#b23b2e;--hot-bg:#f7e0dc;--warn:#9a6a12;--warn-bg:#f6ecd2;--comp:#39603f;--comp-bg:#e3efe5;
   }
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:'Inter','Helvetica Neue',Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:28px 16px 56px}
@@ -29,13 +29,17 @@
   .stat .n{font-family:'Commissioner',sans-serif;font-size:22px;font-weight:700;line-height:1}
   .stat .l{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8ba3b8;margin-top:4px}
   .stat .n.hot{color:#f0a79c}
-  .controls{background:var(--card);border-left:1px solid var(--hair);border-right:1px solid var(--hair);padding:14px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--hair)}
-  .search{flex:1;min-width:180px;position:relative}
+  .controls{background:var(--card);border-left:1px solid var(--hair);border-right:1px solid var(--hair);padding:12px 18px;border-bottom:1px solid var(--hair)}
+  .controls.top{padding-bottom:0}
+  .search{position:relative;display:block}
   .search input{width:100%;padding:10px 12px 10px 34px;border:1px solid var(--hair);border-radius:9px;font:inherit;font-size:14px;color:var(--text);background:#fbfcfd}
   .search input:focus{outline:2px solid var(--link);outline-offset:1px;border-color:transparent}
   .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.45}
+  .filters{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .fgroup{display:flex;align-items:center;gap:7px}
+  .flabel{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
   .seg{display:inline-flex;border:1px solid var(--hair);border-radius:9px;overflow:hidden}
-  .seg button{font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:#fff;border:0;padding:9px 12px;cursor:pointer}
+  .seg button{font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:#fff;border:0;padding:8px 11px;cursor:pointer}
   .seg button+button{border-left:1px solid var(--hair)}
   .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
   .seg button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
@@ -44,11 +48,13 @@
   .row:first-child{border-top:0}.row:hover{background:#f7f9fb}
   .row:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
   .chips{display:flex;gap:8px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
-  .clock{font-size:11.5px;font-weight:700;border-radius:5px;padding:3px 8px;letter-spacing:.01em;color:var(--tag);background:var(--tag-bg)}
+  .clock{font-size:11.5px;font-weight:700;border-radius:5px;padding:3px 8px;color:var(--tag);background:var(--tag-bg)}
   .clock.hot{color:var(--hot);background:var(--hot-bg)}
   .clock.warn{color:var(--warn);background:var(--warn-bg)}
   .amount{font-family:'Commissioner',sans-serif;font-weight:700;font-size:13px;color:var(--signal);background:var(--signal-bg);border-radius:6px;padding:3px 9px}
   .amount.unknown{color:var(--muted);background:#eef1f4;font-weight:600}
+  .proc{font-size:11.5px;font-weight:600;color:var(--comp);background:var(--comp-bg);border-radius:5px;padding:3px 8px}
+  .proc.direct{color:var(--muted);background:#eef1f4}
   .cpv{font-size:11.5px;font-weight:600;color:var(--tag);background:var(--tag-bg);border-radius:5px;padding:3px 8px}
   .subject{font-size:15.5px;font-weight:500;color:var(--text)}
   .meta{display:flex;gap:14px;align-items:center;margin-top:9px;flex-wrap:wrap}
@@ -61,7 +67,7 @@
   .row{opacity:0;transform:translateY(6px);animation:in .34s ease forwards}
   @media (prefers-reduced-motion:reduce){.row{opacity:1;transform:none;animation:none}.dot{animation:none}}
   @keyframes in{to{opacity:1;transform:none}}
-  @media (max-width:520px){h1{font-size:22px}.readout{gap:16px}.controls{flex-direction:column;align-items:stretch}.open{margin-left:0}}
+  @media (max-width:520px){h1{font-size:22px}.readout{gap:16px}.filters{gap:12px}.open{margin-left:0}}
 </style>
 </head>
 <body>
@@ -69,34 +75,53 @@
   <header class="desk">
     <div class="top"><span class="dot" aria-hidden="true"></span><span class="live-label">Live desk · ΚΗΜΔΗΣ</span></div>
     <h1>Audit Tender Desk</h1>
-    <div class="sub">Open audit tenders · deadline not yet passed · sorted by what closes soonest</div>
+    <div class="sub">All open audit tenders · filter by type & value · closing soonest first</div>
     <div class="readout">
-      <div class="stat"><div class="n" id="stat-open">0</div><div class="l">Open to bid</div></div>
+      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Shown</div></div>
       <div class="stat"><div class="n hot" id="stat-closing">0</div><div class="l">Closing ≤ 3 days</div></div>
-      <div class="stat"><div class="n" style="font-size:16px">21/07 · 03:15</div><div class="l">Updated (Athens)</div></div>
+      <div class="stat"><div class="n" style="font-size:16px">21/07 · 12:19</div><div class="l">Updated (Athens)</div></div>
     </div>
   </header>
-  <div class="controls">
+  <div class="controls top">
     <label class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input id="q" type="search" placeholder="Filter — δήμος, νοσοκομείο, keyword…" aria-label="Filter tenders">
     </label>
-    <div class="seg" role="group" aria-label="Sort">
-      <button data-sort="deadline" aria-pressed="true">Closing soon</button>
-      <button data-sort="value" aria-pressed="false">Highest value</button>
+  </div>
+  <div class="controls filters">
+    <div class="fgroup"><span class="flabel">Type</span>
+      <div class="seg" role="group" aria-label="Procedure type">
+        <button data-proc="all" aria-pressed="true">All</button>
+        <button data-proc="competition" aria-pressed="false">Competitions</button>
+        <button data-proc="direct" aria-pressed="false">Direct</button>
+      </div>
+    </div>
+    <div class="fgroup"><span class="flabel">Min €</span>
+      <div class="seg" role="group" aria-label="Minimum value">
+        <button data-min="0" aria-pressed="true">Any</button>
+        <button data-min="10000" aria-pressed="false">10k+</button>
+        <button data-min="30000" aria-pressed="false">30k+</button>
+      </div>
+    </div>
+    <div class="fgroup"><span class="flabel">Sort</span>
+      <div class="seg" role="group" aria-label="Sort">
+        <button data-sort="deadline" aria-pressed="true">Closing</button>
+        <button data-sort="value" aria-pressed="false">Value</button>
+      </div>
     </div>
   </div>
   <main class="list" id="list"></main>
-  <div class="empty" id="empty">No open tenders match that filter.</div>
+  <div class="empty" id="empty">Nothing matches these filters.</div>
 </div>
 <p class="foot">
-  Live from <b>ΚΗΜΔΗΣ</b> (Central Registry of Public Contracts) · audit CPV family · only tenders whose bidding deadline hasn't passed.
-  ΚΗΜΔΗΣ refreshes about once a day. Amounts are the official estimated value ex-VAT — always open the document to confirm terms and deadline.
+  Live from <b>ΚΗΜΔΗΣ</b> · audit CPV family · every open tender (deadline not passed).
+  <b>Competitions</b> = open/restricted procedures anyone can win. <b>Direct</b> = απευθείας ανάθεση, often pre-arranged — but a few are genuine open calls, so check the document.
+  ΚΗΜΔΗΣ refreshes ~daily; amounts are the official estimate ex-VAT.
 </p>
 <script>
-  const TENDERS = [{"s": "ΤΑΚΤΙΚΟΣ ΦΟΡΟΛΟΓΙΚΟΣ ΈΛΕΓΧΟΣ ΧΡΗΣΗΣ 2026 & ΕΤΗΣΙΟ ΦΟΡΟΛΟΓΙΚΟ ΠΙΣΤΟΠΟΙΗΤΙΚΟ ΧΡΗΣΗΣ 2026 Ο.Λ.Λ ΑΕ", "adam": "26PROC019434739", "deadline": "2026-07-21T00:00:00", "amount": 12000.0, "org": "ΟΡΓΑΝΙΣΜΟΣ ΛΙΜΕΝΟΣ  ΛΑΥΡΙΟΥ Α.Ε", "cpv": "Υπηρεσίες λογιστικής και διαχειριστικού ελέγχου"}, {"s": "ΕΣΩΤΕΡΙΚΟΣ ΕΛΕΓΚΤΗΣ", "adam": "26PROC019471094", "deadline": "2026-07-21T11:00:00", "amount": 8000.0, "org": "ΓΑΙΑ ΟΣΕ ΑΕ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "Πρόσκληση για τον προσδιορισμό των αναλυτικών αποτελεσμάτων", "adam": "26PROC019454495", "deadline": "2026-07-21T11:00:00", "amount": 11000.0, "org": "ΝΟΜ.ΓΕΝ. ΝΟΣΟΚΟΜΕΙΟ ΚΟΡΙΝΘΟΥ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "Πρόσκληση για την υποβολή προσφοράς για φορολογικό έλεγχο", "adam": "26PROC019440389", "deadline": "2026-07-21T13:00:00", "amount": 12000.0, "org": "ΟΡΓΑΝΙΣΜΟΣ ΑΣΤΙΚΩΝ ΣΥΓΚΟΙΝΩΝΙΩΝ ΑΘΗΝΩΝ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "Παροχή Υπηρεσιών ενδογενούς ελέγχου του ΕΟΠΑΕ", "adam": "26PROC019437342", "deadline": "2026-07-21T14:00:00", "amount": 30000.0, "org": "ΕΘΝΙΚΟΣ ΟΡΓΑΝΙΣΜΟΣ ΠΡΟΛΗΨΗΣ ΚΑΙ ΑΝΤΙΜΕΤΩΠΙΣΗΣ ΕΞΑΡΤΗΣΕΩΝ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ", "adam": "26PROC019392334", "deadline": "2026-07-21T16:00:00", "amount": 8000.0, "org": "ΝΕΑ ΜΗΤΡΟΠΟΛΙΤΙΚΗ ΑΤΤΙΚΗ Α Ε   ΑΝΑΠΤΥΞΙΑΚΟΣ ΟΡΓΑΝΙΣΜΟΣ ΤΟΠΙΚΗΣ ΑΥΤΟΔΙΟΙΚΗΣΗΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "Παροχή Ανεξάρτητων Υπηρεσιών Εσωτερικού Ελέγχου στο Δήμο Άνδρου", "adam": "26PROC019470520", "deadline": "2026-07-22T00:00:00", "amount": 20000.0, "org": "ΔΗΜΟΣ ΑΝΔΡΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "Πρόσκληση για προσφορά για ετήσια παροχή ανεξάρτητων υπηρεσιών Εσωτερικού Ελέγχου", "adam": "26PROC019449387", "deadline": "2026-07-22T14:00:00", "amount": 30000.0, "org": "ΔΗΜΟΣ ΚΑΡΥΣΤΟΥ", "cpv": "Υπηρεσίες διαχειριστικού ελέγχου"}, {"s": "Πρόσκληση υποβολής προσφοράς: Παροχή Συμβουλευτικών Υπηρεσιών Εσωτερικού Ελέγχου", "adam": "26PROC019458487", "deadline": "2026-07-22T15:00:00", "amount": 8064.52, "org": "ΔΗΜΟΣ ΣΚΙΑΘΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ", "adam": "26PROC019469932", "deadline": "2026-07-22T16:00:00", "amount": 18000.0, "org": "ΑΝΑΠΤΥΞΙΑΚΗ ΑΘΗΝΑΣ ΑΝΩΝΥΜΗ ΕΤΑΙΡΕΙΑ - ΑΝΑΠΤΥΞΙΑΚΟΣ ΟΡΓΑΝΙΣΜΟΣ ΤΟΠΙΚΗΣ ΑΥΤΟΔΙΟΙΚΗΣΗΣ Α.Ε.", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΓΙΑ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΛΕΓΧΟΥ ΟΙΚΟΝ. ΚΑΤΑΣΤΑΣΕΩΝ 2025 ΤΟΥ ΠΑΝ. ΠΕΛ ΑΠΟ ΟΡΚΩΤΟΥΣ", "adam": "26PROC019464300", "deadline": "2026-07-23T09:00:00", "amount": 12340.0, "org": "ΠΑΝΕΠΙΣΤΗΜΙΟ ΠΕΛΟΠΟΝΝΗΣΟΥ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "Παροχή ανεξάρτητων υπηρεσιών εσωτερικού ελέγχου του Δήμου Τήνου", "adam": "26PROC019465420", "deadline": "2026-07-23T12:00:00", "amount": 20000.0, "org": "ΔΗΜΟΣ ΤΗΝΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "Παροχή Ανεξάρτητων Υπηρεσιών Υποστήριξης της Μονάδας Εσωτερικού Ελέγχου του Δήμου Θερμαϊκού", "adam": "26PROC019459127", "deadline": "2026-07-23T13:00:00", "amount": 25000.0, "org": "ΔΗΜΟΣ ΘΕΡΜΑΙΚΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "33512/16-07-2026 ΠΡΟΣΚΛΣΗ ΑΝΑΘΕΣΗΣ ΓΙΑ την παροχή Συμβουλευτικών Υπηρεσιών για την Κατάρτιση Εσωτερι", "adam": "26PROC019458992", "deadline": "2026-07-23T14:00:00", "amount": 20000.0, "org": "ΠΕΡΙΦ. ΠΑΝΕΠΙΣΤ. ΓΕΝ. ΝΟΣΟΚ. ΛΑΡΙΣΑΣ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "Παροχή Ανεξάρτητων Υπηρεσιών Εσωτερικού Ελέγχου στο Δήμο Άνδρου", "adam": "26PROC019473439", "deadline": "2026-07-25T00:00:00", "amount": 24800.0, "org": "ΔΗΜΟΣ ΑΝΔΡΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "ΑΝΕΞΑΡΤΗΤΕΣ ΥΠΗΡΕΣΙΕΣ ΕΣΩΤΕΡΙΚΟΥ ΕΛΕΓΧΟΥ", "adam": "26PROC019473786", "deadline": "2026-07-27T00:00:00", "amount": 13709.67, "org": "ΑΝΑΓΚΑΣΤΙΚΟΣ ΣΥΝΔΕΣΜΟΣ ΔΙΑΧΕΙΡΙΣΗΣ ΣΤΕΡΕΩΝ ΑΠΟΒΛΗΤΩΝ 2ΗΣ ΔΙΑΧΕΙΡΙΣΤΙΚΗΣ ΕΝΟΤΗΤΑΣ ΔΗΜΟΥ ΣΤΡΑΤΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "Διενέργεια τακτικού ελέγχου έτους 2025 του Δήμου Τήνου", "adam": "26PROC019475436", "deadline": "2026-07-27T13:00:00", "amount": 7500.0, "org": "ΔΗΜΟΣ ΤΗΝΟΥ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "ΑΝΕΞΑΡΤΗΤΕΣ ΥΠΗΡΕΣΙΕΣ ΕΣΩΤΕΡΙΚΟΥ ΕΛΕΓΧΟΥ ΧΡΗΣΕΩΣ 2026", "adam": "26PROC019473049", "deadline": "2026-07-27T13:00:00", "amount": 13709.67, "org": "ΑΝΑΓΚΑΣΤΙΚΟΣ ΣΥΝΔΕΣΜΟΣ ΔΙΑΧΕΙΡΙΣΗΣ ΣΤΕΡΕΩΝ ΑΠΟΒΛΗΤΩΝ 2ΗΣ ΔΙΑΧΕΙΡΙΣΤΙΚΗΣ ΕΝΟΤΗΤΑΣ ΔΗΜΟΥ ΣΤΡΑΤΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ ΜΕ ΤΗ ΔΙΑΔΙΚΑΣΙΑ ΤΗΣ ΑΠΕΥΘΕΙΑΣ ΑΝΑΘΕΣΗΣ ΤΟΥ ΑΡΘΡΟΥ 118 ΤΟΥ Ν.4412/2016", "adam": "26PROC019467185", "deadline": "2026-07-28T14:00:00", "amount": 8000.0, "org": "ΕΘΝΙΚΟ ΜΕΤΣΟΒΙΟ ΠΟΛΥΤΕΧΝΕΙΟ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΕΚΔΗΛΩΣΗΣ ΕΝΔΙΑΦΕΡΟΝΤΟΣ ΚΑΙ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ-ΥΠΗΡΕΣΙΕΣ ΤΑΚΤΙΚΟΥ ΕΛΕΓΧΟΥ ΟΙΚΟΝΟΜΙΚΩΝ ΚΑΤΑ", "adam": "26PROC019463187", "deadline": "2026-07-28T14:00:00", "amount": 30000.0, "org": "ΕΛΛΗΝΙΚΗ ΡΑΔΙΟΦΩΝΙΑ ΤΗΛΕΟΡΑΣΗ ΑΝΩΝΥΜΗ ΕΤΑΙΡΕΙΑ (Ε.Ρ.Τ. Α.Ε.)", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΕΚΔΗΛΩΣΗΣ ΕΝΔΙΑΦΕΡΟΝΤΟΣ ΓΙΑ ΤΗΝ ΑΝΑΘΕΣΗ ΥΠΗΡΕΣΙΩΝ ΟΙΚΟΝΟΜΙΚΟΥ ΕΛΕΓΧΟΥ", "adam": "26PROC019451389", "deadline": "2026-07-31T14:30:00", "amount": 3225.8, "org": "ΝΟΜ.ΓΕΝ. ΝΟΣΟΚΟΜΕΙΟ ΜΥΤΙΛΗΝΗΣ 'ΒΟΣΤΑΝΕΙΟ'", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "Διακήρυξη διαγωνισμού 01/2026 παροχής υπηρεσιών οικονομικού διαχειριστικού ελέγχου για το ΤΕΚΑ", "adam": "26PROC019446925", "deadline": "2026-08-20T15:00:00", "amount": 60000.0, "org": "ΤΑΜΕΙΟ ΕΠΙΚΟΥΡΙΚΗΣ ΚΕΦΑΛΑΙΟΠΟΙΗΤΙΚΗΣ ΑΣΦΑΛΙΣΗΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "ΠΕΡΙΛΗΨΗ ΔΙΑΚΗΡΥΞΗΣ 01/2026 ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΟΙΚΟΝΟΜΙΚΟΥ & ΔΙΑΧΕΙΡΙΣΤΙΚΟΥ ΕΛΕΓΧΟΥ  ΓΙΑ ΤΟ ΤΕΚΑ", "adam": "26PROC019444522", "deadline": "2026-08-20T15:00:00", "amount": 60000.0, "org": "ΤΑΜΕΙΟ ΕΠΙΚΟΥΡΙΚΗΣ ΚΕΦΑΛΑΙΟΠΟΙΗΤΙΚΗΣ ΑΣΦΑΛΙΣΗΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}, {"s": "Υπηρεσία οικονομικού διαχειριστικού ελέγχου (ορκωτοί λογιστές) για την χρήση έτους 2024", "adam": "26PROC019012190", "deadline": "2026-12-31T11:00:00", "amount": 9750.0, "org": "ΔΗΜΟΣ ΚΟΝΙΤΣΑΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου"}];
-  const NOW = Date.now(), DAY = 86400000;
-  let sortMode='deadline';
+  const TENDERS = [{"s": "ΤΑΚΤΙΚΟΣ ΦΟΡΟΛΟΓΙΚΟΣ ΈΛΕΓΧΟΣ ΧΡΗΣΗΣ 2026 & ΕΤΗΣΙΟ ΦΟΡΟΛΟΓΙΚΟ ΠΙΣΤΟΠΟΙΗΤΙΚΟ ΧΡΗΣΗΣ 2026 Ο.Λ.Λ ΑΕ", "adam": "26PROC019434739", "deadline": "2026-07-21T00:00:00", "amount": 12000.0, "org": "ΟΡΓΑΝΙΣΜΟΣ ΛΙΜΕΝΟΣ  ΛΑΥΡΙΟΥ Α.Ε", "cpv": "Υπηρεσίες λογιστικής και διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΕΣΩΤΕΡΙΚΟΣ ΕΛΕΓΚΤΗΣ", "adam": "26PROC019471094", "deadline": "2026-07-21T11:00:00", "amount": 8000.0, "org": "ΓΑΙΑ ΟΣΕ ΑΕ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Πρόσκληση για τον προσδιορισμό των αναλυτικών αποτελεσμάτων", "adam": "26PROC019454495", "deadline": "2026-07-21T11:00:00", "amount": 11000.0, "org": "ΝΟΜ.ΓΕΝ. ΝΟΣΟΚΟΜΕΙΟ ΚΟΡΙΝΘΟΥ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Πρόσκληση για την υποβολή προσφοράς για φορολογικό έλεγχο", "adam": "26PROC019440389", "deadline": "2026-07-21T13:00:00", "amount": 12000.0, "org": "ΟΡΓΑΝΙΣΜΟΣ ΑΣΤΙΚΩΝ ΣΥΓΚΟΙΝΩΝΙΩΝ ΑΘΗΝΩΝ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Παροχή Υπηρεσιών ενδογενούς ελέγχου του ΕΟΠΑΕ", "adam": "26PROC019437342", "deadline": "2026-07-21T14:00:00", "amount": 30000.0, "org": "ΕΘΝΙΚΟΣ ΟΡΓΑΝΙΣΜΟΣ ΠΡΟΛΗΨΗΣ ΚΑΙ ΑΝΤΙΜΕΤΩΠΙΣΗΣ ΕΞΑΡΤΗΣΕΩΝ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ", "adam": "26PROC019392334", "deadline": "2026-07-21T16:00:00", "amount": 8000.0, "org": "ΝΕΑ ΜΗΤΡΟΠΟΛΙΤΙΚΗ ΑΤΤΙΚΗ Α Ε   ΑΝΑΠΤΥΞΙΑΚΟΣ ΟΡΓΑΝΙΣΜΟΣ ΤΟΠΙΚΗΣ ΑΥΤΟΔΙΟΙΚΗΣΗΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Παροχή Ανεξάρτητων Υπηρεσιών Εσωτερικού Ελέγχου στο Δήμο Άνδρου", "adam": "26PROC019470520", "deadline": "2026-07-22T00:00:00", "amount": 20000.0, "org": "ΔΗΜΟΣ ΑΝΔΡΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Πρόσκληση για προσφορά για ετήσια παροχή ανεξάρτητων υπηρεσιών Εσωτερικού Ελέγχου", "adam": "26PROC019449387", "deadline": "2026-07-22T14:00:00", "amount": 30000.0, "org": "ΔΗΜΟΣ ΚΑΡΥΣΤΟΥ", "cpv": "Υπηρεσίες διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Πρόσκληση υποβολής προσφοράς: Παροχή Συμβουλευτικών Υπηρεσιών Εσωτερικού Ελέγχου", "adam": "26PROC019458487", "deadline": "2026-07-22T15:00:00", "amount": 8064.52, "org": "ΔΗΜΟΣ ΣΚΙΑΘΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ", "adam": "26PROC019469932", "deadline": "2026-07-22T16:00:00", "amount": 18000.0, "org": "ΑΝΑΠΤΥΞΙΑΚΗ ΑΘΗΝΑΣ ΑΝΩΝΥΜΗ ΕΤΑΙΡΕΙΑ - ΑΝΑΠΤΥΞΙΑΚΟΣ ΟΡΓΑΝΙΣΜΟΣ ΤΟΠΙΚΗΣ ΑΥΤΟΔΙΟΙΚΗΣΗΣ Α.Ε.", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΓΙΑ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΛΕΓΧΟΥ ΟΙΚΟΝ. ΚΑΤΑΣΤΑΣΕΩΝ 2025 ΤΟΥ ΠΑΝ. ΠΕΛ ΑΠΟ ΟΡΚΩΤΟΥΣ", "adam": "26PROC019464300", "deadline": "2026-07-23T09:00:00", "amount": 12340.0, "org": "ΠΑΝΕΠΙΣΤΗΜΙΟ ΠΕΛΟΠΟΝΝΗΣΟΥ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Παροχή ανεξάρτητων υπηρεσιών εσωτερικού ελέγχου του Δήμου Τήνου", "adam": "26PROC019465420", "deadline": "2026-07-23T12:00:00", "amount": 20000.0, "org": "ΔΗΜΟΣ ΤΗΝΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Παροχή Ανεξάρτητων Υπηρεσιών Υποστήριξης της Μονάδας Εσωτερικού Ελέγχου του Δήμου Θερμαϊκού", "adam": "26PROC019459127", "deadline": "2026-07-23T13:00:00", "amount": 25000.0, "org": "ΔΗΜΟΣ ΘΕΡΜΑΙΚΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "33512/16-07-2026 ΠΡΟΣΚΛΣΗ ΑΝΑΘΕΣΗΣ ΓΙΑ την παροχή Συμβουλευτικών Υπηρεσιών για την Κατάρτιση Εσωτερι", "adam": "26PROC019458992", "deadline": "2026-07-23T14:00:00", "amount": 20000.0, "org": "ΠΕΡΙΦ. ΠΑΝΕΠΙΣΤ. ΓΕΝ. ΝΟΣΟΚ. ΛΑΡΙΣΑΣ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Παροχή Ανεξάρτητων Υπηρεσιών Εσωτερικού Ελέγχου στο Δήμο Άνδρου", "adam": "26PROC019473439", "deadline": "2026-07-25T00:00:00", "amount": 24800.0, "org": "ΔΗΜΟΣ ΑΝΔΡΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΑΝΕΞΑΡΤΗΤΕΣ ΥΠΗΡΕΣΙΕΣ ΕΣΩΤΕΡΙΚΟΥ ΕΛΕΓΧΟΥ", "adam": "26PROC019473786", "deadline": "2026-07-27T00:00:00", "amount": 13709.67, "org": "ΑΝΑΓΚΑΣΤΙΚΟΣ ΣΥΝΔΕΣΜΟΣ ΔΙΑΧΕΙΡΙΣΗΣ ΣΤΕΡΕΩΝ ΑΠΟΒΛΗΤΩΝ 2ΗΣ ΔΙΑΧΕΙΡΙΣΤΙΚΗΣ ΕΝΟΤΗΤΑΣ ΔΗΜΟΥ ΣΤΡΑΤΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "Διενέργεια τακτικού ελέγχου έτους 2025 του Δήμου Τήνου", "adam": "26PROC019475436", "deadline": "2026-07-27T13:00:00", "amount": 7500.0, "org": "ΔΗΜΟΣ ΤΗΝΟΥ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΑΝΕΞΑΡΤΗΤΕΣ ΥΠΗΡΕΣΙΕΣ ΕΣΩΤΕΡΙΚΟΥ ΕΛΕΓΧΟΥ ΧΡΗΣΕΩΣ 2026", "adam": "26PROC019473049", "deadline": "2026-07-27T13:00:00", "amount": 13709.67, "org": "ΑΝΑΓΚΑΣΤΙΚΟΣ ΣΥΝΔΕΣΜΟΣ ΔΙΑΧΕΙΡΙΣΗΣ ΣΤΕΡΕΩΝ ΑΠΟΒΛΗΤΩΝ 2ΗΣ ΔΙΑΧΕΙΡΙΣΤΙΚΗΣ ΕΝΟΤΗΤΑΣ ΔΗΜΟΥ ΣΤΡΑΤΟΥ", "cpv": "Υπηρεσίες εσωτερικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ ΜΕ ΤΗ ΔΙΑΔΙΚΑΣΙΑ ΤΗΣ ΑΠΕΥΘΕΙΑΣ ΑΝΑΘΕΣΗΣ ΤΟΥ ΑΡΘΡΟΥ 118 ΤΟΥ Ν.4412/2016", "adam": "26PROC019467185", "deadline": "2026-07-28T14:00:00", "amount": 8000.0, "org": "ΕΘΝΙΚΟ ΜΕΤΣΟΒΙΟ ΠΟΛΥΤΕΧΝΕΙΟ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΕΚΔΗΛΩΣΗΣ ΕΝΔΙΑΦΕΡΟΝΤΟΣ ΚΑΙ ΥΠΟΒΟΛΗΣ ΠΡΟΣΦΟΡΑΣ-ΥΠΗΡΕΣΙΕΣ ΤΑΚΤΙΚΟΥ ΕΛΕΓΧΟΥ ΟΙΚΟΝΟΜΙΚΩΝ ΚΑΤΑ", "adam": "26PROC019463187", "deadline": "2026-07-28T14:00:00", "amount": 30000.0, "org": "ΕΛΛΗΝΙΚΗ ΡΑΔΙΟΦΩΝΙΑ ΤΗΛΕΟΡΑΣΗ ΑΝΩΝΥΜΗ ΕΤΑΙΡΕΙΑ (Ε.Ρ.Τ. Α.Ε.)", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}, {"s": "ΠΡΟΣΚΛΗΣΗ ΕΚΔΗΛΩΣΗΣ ΕΝΔΙΑΦΕΡΟΝΤΟΣ ΓΙΑ ΤΗΝ ΑΝΑΘΕΣΗ ΥΠΗΡΕΣΙΩΝ ΟΙΚΟΝΟΜΙΚΟΥ ΕΛΕΓΧΟΥ", "adam": "26PROC019451389", "deadline": "2026-07-31T14:30:00", "amount": 3225.8, "org": "ΝΟΜ.ΓΕΝ. ΝΟΣΟΚΟΜΕΙΟ ΜΥΤΙΛΗΝΗΣ 'ΒΟΣΤΑΝΕΙΟ'", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Ανοιχτή διαδικασία", "kind": "competition"}, {"s": "Διακήρυξη διαγωνισμού 01/2026 παροχής υπηρεσιών οικονομικού διαχειριστικού ελέγχου για το ΤΕΚΑ", "adam": "26PROC019446925", "deadline": "2026-08-20T15:00:00", "amount": 60000.0, "org": "ΤΑΜΕΙΟ ΕΠΙΚΟΥΡΙΚΗΣ ΚΕΦΑΛΑΙΟΠΟΙΗΤΙΚΗΣ ΑΣΦΑΛΙΣΗΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Ανοιχτή διαδικασία", "kind": "competition"}, {"s": "ΠΕΡΙΛΗΨΗ ΔΙΑΚΗΡΥΞΗΣ 01/2026 ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΟΙΚΟΝΟΜΙΚΟΥ & ΔΙΑΧΕΙΡΙΣΤΙΚΟΥ ΕΛΕΓΧΟΥ  ΓΙΑ ΤΟ ΤΕΚΑ", "adam": "26PROC019444522", "deadline": "2026-08-20T15:00:00", "amount": 60000.0, "org": "ΤΑΜΕΙΟ ΕΠΙΚΟΥΡΙΚΗΣ ΚΕΦΑΛΑΙΟΠΟΙΗΤΙΚΗΣ ΑΣΦΑΛΙΣΗΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Ανοιχτή διαδικασία", "kind": "competition"}, {"s": "Υπηρεσία οικονομικού διαχειριστικού ελέγχου (ορκωτοί λογιστές) για την χρήση έτους 2024", "adam": "26PROC019012190", "deadline": "2026-12-31T11:00:00", "amount": 9750.0, "org": "ΔΗΜΟΣ ΚΟΝΙΤΣΑΣ", "cpv": "Υπηρεσίες οικονομικού διαχειριστικού ελέγχου", "proc": "Απευθείας ανάθεση", "kind": "direct"}];
+  const NOW=Date.now(),DAY=86400000;
+  let procFilter='all', minValue=0, sortMode='deadline';
   const listEl=document.getElementById('list'),emptyEl=document.getElementById('empty'),qEl=document.getElementById('q');
   const fmtMoney=n=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:0}).format(n)+' €';
   function daysLeft(iso){ if(!iso) return null; return Math.ceil((new Date(iso).getTime()-NOW)/DAY); }
@@ -108,10 +133,15 @@
     if(d<=7) return {t:'σε '+d+' ημέρες', c:'warn'};
     return {t:'σε '+d+' ημέρες', c:''};
   }
+  function passes(t){
+    if(procFilter!=='all' && t.kind!==procFilter) return false;
+    if((t.amount||0) < minValue) return false;
+    return true;
+  }
   function render(){
     const q=qEl.value.trim().toLowerCase();
-    let rows=TENDERS.slice();
-    if(q)rows=rows.filter(t=>((t.s||'')+' '+(t.org||'')+' '+(t.adam||'')+' '+(t.cpv||'')).toLowerCase().includes(q));
+    let rows=TENDERS.filter(passes);
+    if(q)rows=rows.filter(t=>((t.s||'')+' '+(t.org||'')+' '+(t.adam||'')+' '+(t.cpv||'')+' '+(t.proc||'')).toLowerCase().includes(q));
     if(sortMode==='value')rows.sort((a,b)=>(b.amount||-1)-(a.amount||-1));
     else rows.sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
     listEl.innerHTML='';
@@ -119,26 +149,32 @@
       const a=document.createElement('a');a.className='row';
       a.href='https://cerpp.eprocurement.gov.gr/khmdhs-opendata/notice/attachment/'+t.adam;
       a.target='_blank';a.rel='noopener';
-      a.style.animationDelay=Math.min(idx*18,300)+'ms';
+      a.style.animationDelay=Math.min(idx*16,300)+'ms';
       const ck=clockLabel(t.deadline);
       const clock='<span class="clock '+ck.c+'">'+ck.t+'</span>';
       const amt=t.amount!=null?'<span class="amount">'+fmtMoney(t.amount)+'</span>':'<span class="amount unknown">Value n/a</span>';
-      const cpv=t.cpv?'<span class="cpv">'+t.cpv.slice(0,26)+'</span>':'';
-      a.innerHTML='<div class="chips">'+clock+amt+cpv+'</div><div class="subject">'+(t.s||'(χωρίς τίτλο)')+'</div>'+
+      const proc=t.proc?'<span class="proc'+(t.kind==='direct'?' direct':'')+'">'+t.proc+'</span>':'';
+      const cpv=t.cpv?'<span class="cpv">'+t.cpv.slice(0,24)+'</span>':'';
+      a.innerHTML='<div class="chips">'+clock+amt+proc+cpv+'</div><div class="subject">'+(t.s||'(χωρίς τίτλο)')+'</div>'+
         '<div class="meta"><span class="org">'+(t.org||'')+'</span>'+
         '<span class="open">Open document <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>';
       listEl.appendChild(a);
     });
     emptyEl.style.display=rows.length?'none':'block';
-    document.getElementById('stat-open').textContent=TENDERS.length;
-    document.getElementById('stat-closing').textContent=TENDERS.filter(t=>{const d=daysLeft(t.deadline);return d!==null&&d<=3;}).length;
+    document.getElementById('stat-shown').textContent=rows.length;
+    document.getElementById('stat-closing').textContent=rows.filter(t=>{const d=daysLeft(t.deadline);return d!==null&&d<=3;}).length;
+  }
+  function wire(sel, apply){
+    document.querySelectorAll(sel).forEach(b=>b.addEventListener('click',()=>{
+      apply(b);
+      document.querySelectorAll(sel).forEach(x=>x.setAttribute('aria-pressed', x===b));
+      render();
+    }));
   }
   qEl.addEventListener('input',render);
-  document.querySelectorAll('[data-sort]').forEach(b=>b.addEventListener('click',()=>{
-    sortMode=b.dataset.sort;
-    document.querySelectorAll('[data-sort]').forEach(x=>x.setAttribute('aria-pressed', x===b));
-    render();
-  }));
+  wire('[data-proc]', b=>procFilter=b.dataset.proc);
+  wire('[data-min]',  b=>minValue=+b.dataset.min);
+  wire('[data-sort]', b=>sortMode=b.dataset.sort);
   render();
 </script>
 </body>
