@@ -1,0 +1,36 @@
+name: Build Expiry Radar
+
+on:
+  schedule:
+    - cron: "30 5 * * *"   # once a day (ΚΗΜΔΗΣ contracts refresh daily)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Build the expiry radar
+        run: python build_expiry.py
+
+      - name: Publish the page
+        run: |
+          git config user.name "tender-bot"
+          git config user.email "tender-bot@users.noreply.github.com"
+          git add docs/expiry.html
+          git commit -m "Update expiry radar" || echo "No changes"
+          git pull --rebase origin main || true
+          git push
