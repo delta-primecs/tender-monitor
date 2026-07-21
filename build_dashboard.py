@@ -1,8 +1,8 @@
 """
-Build the Audit Tender Desk dashboard — ΚΗΜΔΗΣ backbone.
-Pulls the full audit CPV family from the ΚΗΜΔΗΣ open-data API, keeps only
-tenders whose bidding deadline hasn't passed, and writes docs/index.html
-for GitHub Pages. Public data, no login. (ΚΗΜΔΗΣ refreshes ~once a day.)
+Build the Audit Tender Desk dashboard — ΚΗΜΔΗΣ backbone, keep-everything.
+Pulls ALL open audit tenders (competitions AND direct awards), tags each one,
+and lets you filter live on the page by type and value. Nothing is dropped.
+Writes docs/index.html for GitHub Pages. Public data, no login. (~daily refresh.)
 """
 import os
 import json
@@ -11,7 +11,6 @@ from datetime import date, datetime, timezone, timedelta
 import requests
 
 NOTICE_URL = "https://cerpp.eprocurement.gov.gr/khmdhs-opendata/notice"
-DOC_URL = "https://cerpp.eprocurement.gov.gr/khmdhs-opendata/notice/attachment/"
 OUT = "docs/index.html"
 
 # The audit CPV family to watch.
@@ -24,12 +23,22 @@ CPVS = [
     "79212500-8",  # Accounting review
 ]
 
+# Procedures counted as real "competitions" (used only to TAG each tender, not
+# to drop anything). Everything else is tagged "direct".
+COMPETITIVE_PROCEDURES = {
+    "Ανοιχτή διαδικασία",
+    "Κλειστή διαδικασία",
+    "Ανταγωνιστική διαδικασία με διαπραγμάτευση",
+    "Ανταγωνιστικός διάλογος",
+    "Διαπραγμάτευση με προηγούμενη προκήρυξη διαγωνισμού (αρ.266)",
+    "Σύμπραξη καινοτομίας",
+}
+
 
 def fetch_open_notices():
-    """Fetch recent audit notices, then keep only the ones still open to bid."""
+    """All audit notices still open to bid (competitions AND direct awards)."""
     body = {
         "cpvItems": CPVS,
-        # Proven-working filter: registration-date window (server caps it at 180 days).
         "dateFrom": (date.today() - timedelta(days=179)).isoformat(),
     }
     raw, page = [], 0
@@ -43,11 +52,8 @@ def fetch_open_notices():
         if data.get("last", True):
             break
         page += 1
-        if page > 30:   # safety valve
+        if page > 30:
             break
-    # Keep only tenders whose deadline hasn't passed. We filter here in Python
-    # (not via the API) because the server rejects the deadline parameter in
-    # some date formats — this way is reliable.
     today = date.today().isoformat()
     return [t for t in raw if t.get("deadline") and t["deadline"][:10] >= today]
 
@@ -56,24 +62,24 @@ def to_item(n):
     obj = (n.get("objectDetails") or [{}])[0]
     cpvs = obj.get("cpvs") or []
     cpv_label = cpvs[0].get("value") if cpvs else None
+    proc = (n.get("typeOfProcedure") or {}).get("value")
     return {
         "s": (n.get("title") or "").strip(),
         "adam": n.get("referenceNumber"),
-        "deadline": n.get("finalSubmissionDate"),          # ISO datetime string
+        "deadline": n.get("finalSubmissionDate"),
         "amount": n.get("totalCostWithoutVAT"),
         "org": (n.get("organization") or {}).get("value"),
         "cpv": cpv_label,
+        "proc": proc,
+        "kind": "competition" if proc in COMPETITIVE_PROCEDURES else "direct",
     }
 
 
 def build_html(items):
-    # Sort by soonest deadline first (Python side, so the page is ready to show)
     items.sort(key=lambda x: x["deadline"] or "9999")
     athens = datetime.now(timezone(timedelta(hours=3)))
     stamp = athens.strftime("%d/%m · %H:%M")
-    return (TEMPLATE
-            .replace("__DATA__", json.dumps(items, ensure_ascii=False))
-            .replace("__STAMP__", stamp))
+    return TEMPLATE.replace("__DATA__", json.dumps(items, ensure_ascii=False)).replace("__STAMP__", stamp)
 
 
 def main():
@@ -81,7 +87,8 @@ def main():
     os.makedirs("docs", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(build_html(items))
-    print(f"Wrote {OUT}: {len(items)} open audit tenders from ΚΗΜΔΗΣ.")
+    comp = sum(1 for t in items if t["kind"] == "competition")
+    print(f"Wrote {OUT}: {len(items)} open tenders ({comp} competitions, {len(items)-comp} direct).")
 
 
 TEMPLATE = r"""<!doctype html>
@@ -98,7 +105,7 @@ TEMPLATE = r"""<!doctype html>
     --ink:#0f2537;--ink-2:#16344c;--page:#e9edf1;--card:#fff;--text:#14202b;
     --muted:#63748a;--hair:#dbe1e8;--signal:#b0791f;--signal-bg:#f7edd7;
     --link:#1f6f6b;--link-ink:#155551;--live:#5bd6a6;--tag:#2c4a66;--tag-bg:#e7edf3;
-    --hot:#b23b2e;--hot-bg:#f7e0dc;--warn:#9a6a12;--warn-bg:#f6ecd2;
+    --hot:#b23b2e;--hot-bg:#f7e0dc;--warn:#9a6a12;--warn-bg:#f6ecd2;--comp:#39603f;--comp-bg:#e3efe5;
   }
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:'Inter','Helvetica Neue',Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:28px 16px 56px}
@@ -115,13 +122,17 @@ TEMPLATE = r"""<!doctype html>
   .stat .n{font-family:'Commissioner',sans-serif;font-size:22px;font-weight:700;line-height:1}
   .stat .l{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8ba3b8;margin-top:4px}
   .stat .n.hot{color:#f0a79c}
-  .controls{background:var(--card);border-left:1px solid var(--hair);border-right:1px solid var(--hair);padding:14px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--hair)}
-  .search{flex:1;min-width:180px;position:relative}
+  .controls{background:var(--card);border-left:1px solid var(--hair);border-right:1px solid var(--hair);padding:12px 18px;border-bottom:1px solid var(--hair)}
+  .controls.top{padding-bottom:0}
+  .search{position:relative;display:block}
   .search input{width:100%;padding:10px 12px 10px 34px;border:1px solid var(--hair);border-radius:9px;font:inherit;font-size:14px;color:var(--text);background:#fbfcfd}
   .search input:focus{outline:2px solid var(--link);outline-offset:1px;border-color:transparent}
   .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.45}
+  .filters{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .fgroup{display:flex;align-items:center;gap:7px}
+  .flabel{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
   .seg{display:inline-flex;border:1px solid var(--hair);border-radius:9px;overflow:hidden}
-  .seg button{font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:#fff;border:0;padding:9px 12px;cursor:pointer}
+  .seg button{font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:#fff;border:0;padding:8px 11px;cursor:pointer}
   .seg button+button{border-left:1px solid var(--hair)}
   .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
   .seg button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
@@ -130,11 +141,13 @@ TEMPLATE = r"""<!doctype html>
   .row:first-child{border-top:0}.row:hover{background:#f7f9fb}
   .row:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
   .chips{display:flex;gap:8px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
-  .clock{font-size:11.5px;font-weight:700;border-radius:5px;padding:3px 8px;letter-spacing:.01em;color:var(--tag);background:var(--tag-bg)}
+  .clock{font-size:11.5px;font-weight:700;border-radius:5px;padding:3px 8px;color:var(--tag);background:var(--tag-bg)}
   .clock.hot{color:var(--hot);background:var(--hot-bg)}
   .clock.warn{color:var(--warn);background:var(--warn-bg)}
   .amount{font-family:'Commissioner',sans-serif;font-weight:700;font-size:13px;color:var(--signal);background:var(--signal-bg);border-radius:6px;padding:3px 9px}
   .amount.unknown{color:var(--muted);background:#eef1f4;font-weight:600}
+  .proc{font-size:11.5px;font-weight:600;color:var(--comp);background:var(--comp-bg);border-radius:5px;padding:3px 8px}
+  .proc.direct{color:var(--muted);background:#eef1f4}
   .cpv{font-size:11.5px;font-weight:600;color:var(--tag);background:var(--tag-bg);border-radius:5px;padding:3px 8px}
   .subject{font-size:15.5px;font-weight:500;color:var(--text)}
   .meta{display:flex;gap:14px;align-items:center;margin-top:9px;flex-wrap:wrap}
@@ -147,7 +160,7 @@ TEMPLATE = r"""<!doctype html>
   .row{opacity:0;transform:translateY(6px);animation:in .34s ease forwards}
   @media (prefers-reduced-motion:reduce){.row{opacity:1;transform:none;animation:none}.dot{animation:none}}
   @keyframes in{to{opacity:1;transform:none}}
-  @media (max-width:520px){h1{font-size:22px}.readout{gap:16px}.controls{flex-direction:column;align-items:stretch}.open{margin-left:0}}
+  @media (max-width:520px){h1{font-size:22px}.readout{gap:16px}.filters{gap:12px}.open{margin-left:0}}
 </style>
 </head>
 <body>
@@ -155,34 +168,53 @@ TEMPLATE = r"""<!doctype html>
   <header class="desk">
     <div class="top"><span class="dot" aria-hidden="true"></span><span class="live-label">Live desk · ΚΗΜΔΗΣ</span></div>
     <h1>Audit Tender Desk</h1>
-    <div class="sub">Open audit tenders · deadline not yet passed · sorted by what closes soonest</div>
+    <div class="sub">All open audit tenders · filter by type & value · closing soonest first</div>
     <div class="readout">
-      <div class="stat"><div class="n" id="stat-open">0</div><div class="l">Open to bid</div></div>
+      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Shown</div></div>
       <div class="stat"><div class="n hot" id="stat-closing">0</div><div class="l">Closing ≤ 3 days</div></div>
       <div class="stat"><div class="n" style="font-size:16px">__STAMP__</div><div class="l">Updated (Athens)</div></div>
     </div>
   </header>
-  <div class="controls">
+  <div class="controls top">
     <label class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input id="q" type="search" placeholder="Filter — δήμος, νοσοκομείο, keyword…" aria-label="Filter tenders">
     </label>
-    <div class="seg" role="group" aria-label="Sort">
-      <button data-sort="deadline" aria-pressed="true">Closing soon</button>
-      <button data-sort="value" aria-pressed="false">Highest value</button>
+  </div>
+  <div class="controls filters">
+    <div class="fgroup"><span class="flabel">Type</span>
+      <div class="seg" role="group" aria-label="Procedure type">
+        <button data-proc="all" aria-pressed="true">All</button>
+        <button data-proc="competition" aria-pressed="false">Competitions</button>
+        <button data-proc="direct" aria-pressed="false">Direct</button>
+      </div>
+    </div>
+    <div class="fgroup"><span class="flabel">Min €</span>
+      <div class="seg" role="group" aria-label="Minimum value">
+        <button data-min="0" aria-pressed="true">Any</button>
+        <button data-min="10000" aria-pressed="false">10k+</button>
+        <button data-min="30000" aria-pressed="false">30k+</button>
+      </div>
+    </div>
+    <div class="fgroup"><span class="flabel">Sort</span>
+      <div class="seg" role="group" aria-label="Sort">
+        <button data-sort="deadline" aria-pressed="true">Closing</button>
+        <button data-sort="value" aria-pressed="false">Value</button>
+      </div>
     </div>
   </div>
   <main class="list" id="list"></main>
-  <div class="empty" id="empty">No open tenders match that filter.</div>
+  <div class="empty" id="empty">Nothing matches these filters.</div>
 </div>
 <p class="foot">
-  Live from <b>ΚΗΜΔΗΣ</b> (Central Registry of Public Contracts) · audit CPV family · only tenders whose bidding deadline hasn't passed.
-  ΚΗΜΔΗΣ refreshes about once a day. Amounts are the official estimated value ex-VAT — always open the document to confirm terms and deadline.
+  Live from <b>ΚΗΜΔΗΣ</b> · audit CPV family · every open tender (deadline not passed).
+  <b>Competitions</b> = open/restricted procedures anyone can win. <b>Direct</b> = απευθείας ανάθεση, often pre-arranged — but a few are genuine open calls, so check the document.
+  ΚΗΜΔΗΣ refreshes ~daily; amounts are the official estimate ex-VAT.
 </p>
 <script>
   const TENDERS = __DATA__;
-  const NOW = Date.now(), DAY = 86400000;
-  let sortMode='deadline';
+  const NOW=Date.now(),DAY=86400000;
+  let procFilter='all', minValue=0, sortMode='deadline';
   const listEl=document.getElementById('list'),emptyEl=document.getElementById('empty'),qEl=document.getElementById('q');
   const fmtMoney=n=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:0}).format(n)+' €';
   function daysLeft(iso){ if(!iso) return null; return Math.ceil((new Date(iso).getTime()-NOW)/DAY); }
@@ -194,10 +226,15 @@ TEMPLATE = r"""<!doctype html>
     if(d<=7) return {t:'σε '+d+' ημέρες', c:'warn'};
     return {t:'σε '+d+' ημέρες', c:''};
   }
+  function passes(t){
+    if(procFilter!=='all' && t.kind!==procFilter) return false;
+    if((t.amount||0) < minValue) return false;
+    return true;
+  }
   function render(){
     const q=qEl.value.trim().toLowerCase();
-    let rows=TENDERS.slice();
-    if(q)rows=rows.filter(t=>((t.s||'')+' '+(t.org||'')+' '+(t.adam||'')+' '+(t.cpv||'')).toLowerCase().includes(q));
+    let rows=TENDERS.filter(passes);
+    if(q)rows=rows.filter(t=>((t.s||'')+' '+(t.org||'')+' '+(t.adam||'')+' '+(t.cpv||'')+' '+(t.proc||'')).toLowerCase().includes(q));
     if(sortMode==='value')rows.sort((a,b)=>(b.amount||-1)-(a.amount||-1));
     else rows.sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
     listEl.innerHTML='';
@@ -205,26 +242,32 @@ TEMPLATE = r"""<!doctype html>
       const a=document.createElement('a');a.className='row';
       a.href='https://cerpp.eprocurement.gov.gr/khmdhs-opendata/notice/attachment/'+t.adam;
       a.target='_blank';a.rel='noopener';
-      a.style.animationDelay=Math.min(idx*18,300)+'ms';
+      a.style.animationDelay=Math.min(idx*16,300)+'ms';
       const ck=clockLabel(t.deadline);
       const clock='<span class="clock '+ck.c+'">'+ck.t+'</span>';
       const amt=t.amount!=null?'<span class="amount">'+fmtMoney(t.amount)+'</span>':'<span class="amount unknown">Value n/a</span>';
-      const cpv=t.cpv?'<span class="cpv">'+t.cpv.slice(0,26)+'</span>':'';
-      a.innerHTML='<div class="chips">'+clock+amt+cpv+'</div><div class="subject">'+(t.s||'(χωρίς τίτλο)')+'</div>'+
+      const proc=t.proc?'<span class="proc'+(t.kind==='direct'?' direct':'')+'">'+t.proc+'</span>':'';
+      const cpv=t.cpv?'<span class="cpv">'+t.cpv.slice(0,24)+'</span>':'';
+      a.innerHTML='<div class="chips">'+clock+amt+proc+cpv+'</div><div class="subject">'+(t.s||'(χωρίς τίτλο)')+'</div>'+
         '<div class="meta"><span class="org">'+(t.org||'')+'</span>'+
         '<span class="open">Open document <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>';
       listEl.appendChild(a);
     });
     emptyEl.style.display=rows.length?'none':'block';
-    document.getElementById('stat-open').textContent=TENDERS.length;
-    document.getElementById('stat-closing').textContent=TENDERS.filter(t=>{const d=daysLeft(t.deadline);return d!==null&&d<=3;}).length;
+    document.getElementById('stat-shown').textContent=rows.length;
+    document.getElementById('stat-closing').textContent=rows.filter(t=>{const d=daysLeft(t.deadline);return d!==null&&d<=3;}).length;
+  }
+  function wire(sel, apply){
+    document.querySelectorAll(sel).forEach(b=>b.addEventListener('click',()=>{
+      apply(b);
+      document.querySelectorAll(sel).forEach(x=>x.setAttribute('aria-pressed', x===b));
+      render();
+    }));
   }
   qEl.addEventListener('input',render);
-  document.querySelectorAll('[data-sort]').forEach(b=>b.addEventListener('click',()=>{
-    sortMode=b.dataset.sort;
-    document.querySelectorAll('[data-sort]').forEach(x=>x.setAttribute('aria-pressed', x===b));
-    render();
-  }));
+  wire('[data-proc]', b=>procFilter=b.dataset.proc);
+  wire('[data-min]',  b=>minValue=+b.dataset.min);
+  wire('[data-sort]', b=>sortMode=b.dataset.sort);
   render();
 </script>
 </body>
