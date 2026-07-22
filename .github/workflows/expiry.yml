@@ -2,7 +2,7 @@ name: Build Expiry Radar
 
 on:
   schedule:
-    - cron: "30 5 * * *"   # once a day (ΚΗΜΔΗΣ contracts refresh daily)
+    - cron: "17 4,16 * * *"   # once a day (ΚΗΜΔΗΣ contracts refresh daily)
   workflow_dispatch:
 
 permissions:
