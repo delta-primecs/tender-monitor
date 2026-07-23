@@ -18,6 +18,9 @@
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:'Inter','Helvetica Neue',Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:28px 16px 56px}
   .wrap{max-width:880px;margin:0 auto}
+  .nav{max-width:880px;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
+  .nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);border-radius:8px;background:#fff}
+  .nav a.on{background:var(--ink);color:#fff;border-color:var(--ink)}
   .desk{background:linear-gradient(160deg,var(--ink),var(--ink-2));color:#eaf1f7;border-radius:14px 14px 0 0;padding:22px 24px 20px;position:relative;overflow:hidden}
   .desk::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 6px);opacity:.5}
   .top{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
@@ -75,6 +78,11 @@
 </style>
 </head>
 <body>
+<nav class="nav">
+  <a href="index.html" class="on">Open tenders</a>
+  <a href="expiry.html">Expiry radar</a>
+  <a href="accounts.html">Account map</a>
+</nav>
 <div class="wrap">
   <header class="desk">
     <div class="top"><span class="dot" aria-hidden="true"></span><span class="live-label">Live · ΚΗΜΔΗΣ + ΕΣΗΔΗΣ</span></div>
@@ -83,7 +91,7 @@
     <div class="readout">
       <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Shown</div></div>
       <div class="stat"><div class="n hot" id="stat-closing">0</div><div class="l">Closing ≤ 3 days</div></div>
-      <div class="stat"><div class="n" style="font-size:16px">23/07 · 17:38</div><div class="l">Updated (Athens)</div></div>
+      <div class="stat"><div class="n" style="font-size:16px">23/07 · 17:55</div><div class="l">Updated (Athens)</div></div>
     </div>
   </header>
   <div class="controls top">
