@@ -194,6 +194,7 @@ TEMPLATE = r"""<!doctype html>
 <nav class="nav">
   <a href="index.html">Open tenders</a>
   <a href="expiry.html" class="on">Expiry radar</a>
+  <a href="accounts.html">Account map</a>
 </nav>
 <div class="wrap">
   <header class="desk">
