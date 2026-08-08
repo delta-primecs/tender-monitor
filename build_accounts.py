@@ -181,7 +181,10 @@ def build_accounts(rows):
                          key=lambda r: r["signed"] or "", reverse=True)
         signer = signers[0]["signer"] if signers else None
         region = next((r["region"] for r in items if r["region"]), None)
-        newest_signed = max((r["signed"] for r in items if r["signed"]), default=None)
+        dated = sorted((r for r in items if r["signed"]),
+                       key=lambda r: r["signed"], reverse=True)
+        newest_signed = dated[0]["signed"] if dated else None
+        newest_adam = dated[0]["adam"] if dated else None
 
         # earliest FUTURE end across service lines drives the call-by date
         future_ends = sorted(v["end"] for v in per_service.values()
@@ -198,7 +201,7 @@ def build_accounts(rows):
 
         accounts.append({
             "org": oname, "region": region, "signer": signer,
-            "newest": newest_signed, "renewed": renewed,
+            "newest": newest_signed, "newest_adam": newest_adam, "renewed": renewed,
             "next_end": nxt, "call_by": call_by,
             "has": [{"s": s, "holder": v["holder"], "v": v["value"],
                      "end": v["end"], "signed": v["signed"], "adam": v["adam"]}
@@ -348,7 +351,7 @@ const listEl=document.getElementById('list'), emptyEl=document.getElementById('e
 const money=n=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:0}).format(n)+' €';
 const dmy=s=>s?s.split('-').reverse().join('/'):'—';
 const daysTo=s=>s?Math.ceil((new Date(s)-new Date(TODAY))/DAY):null;
-const diavgeia=org=>'https://diavgeia.gov.gr/search?query='+encodeURIComponent((org||'')+' εσωτερικός έλεγχος')+'&sort=recentPublishDate';
+const diavgeia=org=>'https://www.gov.gr/el/services/1001013/demosioteta-demosion-sumbaseon-kemdes';
 
 document.getElementById('seg-gap').innerHTML =
   '<button data-gap="all" aria-pressed="true">Όλα</button>' +
@@ -383,8 +386,8 @@ function render(){
       '<span class="callby'+(now?' now':'')+'">Call by '+dmy(a.call_by)+'</span></div>'+
       '<div class="subline">'+renew+
       (a.signer?'<span>Υπέγραψε: <b>'+a.signer+'</b></span>':'')+
-      (a.newest?'<span>Τελευταία σύμβαση: '+dmy(a.newest)+'</span>':'')+
-      '<a class="verify" target="_blank" rel="noopener" href="'+diavgeia(a.org)+'">🔎 Έλεγχος στη Διαύγεια</a></div>'+
+      (a.newest?'<span>Τελευταία σύμβαση: '+dmy(a.newest)+(a.newest_adam?' (<b>'+a.newest_adam+'</b>)':'')+'</span>':'')+
+      '<a class="verify" target="_blank" rel="noopener" href="'+diavgeia(a.org)+'">🔎 Έλεγχος στο ΚΗΜΔΗΣ ↗</a></div>'+
       '<div class="lines">'+lines+'</div>'+gaps;
     listEl.appendChild(el);
   });
