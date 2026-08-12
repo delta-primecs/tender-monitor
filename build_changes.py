@@ -196,7 +196,7 @@ function render(){
       '<div class="svc">'+(e.service||'')+'</div>'+
       (e.holder?'<div class="detail">Ανάδοχος: <b>'+e.holder+'</b>'+(e.value?' · '+money(e.value):'')+'</div>':'')+
       '<div class="meta">'+(e.signed?'υπογραφή '+dmy(e.signed):'')+(e.end?' · λήγει '+dmy(e.end):'')+
-      ' <a class="verify" target="_blank" rel="noopener" href="'+kimdis+'">🔎 ΚΗΜΔΗΣ ↗</a></div></div>'+
+      (e.adam?' <a class="verify" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+e.adam+'">Άνοιγμα σύμβασης ↗</a>':'')+'</div></div>'+
       '<div class="date">'+ago+'</div>';
     listEl.appendChild(el);
   });

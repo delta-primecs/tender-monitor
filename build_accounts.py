@@ -388,8 +388,8 @@ function render(){
       '<span class="callby'+(now?' now':'')+'">Call by '+dmy(a.call_by)+'</span></div>'+
       '<div class="subline">'+renew+
       (a.signer?'<span>Υπέγραψε: <b>'+a.signer+'</b></span>':'')+
-      (a.newest?'<span>Τελευταία σύμβαση: '+dmy(a.newest)+(a.newest_adam?' (<b>'+a.newest_adam+'</b>)':'')+'</span>':'')+
-      '<a class="verify" target="_blank" rel="noopener" href="'+diavgeia(a.org)+'">🔎 Έλεγχος στο ΚΗΜΔΗΣ ↗</a></div>'+
+      (a.newest?'<span>Τελευταία σύμβαση: '+dmy(a.newest)+'</span>':'')+
+      (a.newest_adam?'<a class="verify" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+a.newest_adam+'">Άνοιγμα τελευταίας σύμβασης ↗</a>':'')+'</div>'+
       '<div class="lines">'+lines+'</div>'+gaps;
     listEl.appendChild(el);
   });
