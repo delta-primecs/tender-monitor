@@ -7,6 +7,7 @@ Public data, no login. Runs from GitHub Actions.
 """
 import os
 import json
+import time
 from datetime import date, datetime, timezone, timedelta
 
 import requests
@@ -42,20 +43,43 @@ def date_windows(months_back, window_days=175):
     return windows
 
 
+SESSION = requests.Session()
+try:
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    SESSION.mount("https://", HTTPAdapter(max_retries=Retry(
+        total=4, connect=4, read=4, backoff_factor=2.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=frozenset(["GET", "POST"]))))
+except Exception:
+    pass
+
+
 def fetch_contracts(codes, dfrom, dto):
     body = {"cpvItems": codes, "dateFrom": dfrom, "dateTo": dto}
-    out, page = [], 0
+    out, page, fails = [], 0, 0
     while True:
-        r = requests.post(f"{CONTRACT_URL}?page={page}", json=body,
-                          headers={"Accept": "application/json"}, timeout=90)
-        r.raise_for_status()
-        data = r.json()
+        try:
+            r = SESSION.post(f"{CONTRACT_URL}?page={page}", json=body,
+                             headers={"Accept": "application/json"}, timeout=60)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            fails += 1
+            print(f"     page {page} failed ({type(e).__name__}); retry {fails}")
+            if fails >= 3:
+                print("     giving up on this window, moving on")
+                break
+            time.sleep(8 * fails)
+            continue
+        fails = 0
         out.extend(data.get("content", []))
         if data.get("last", True):
             break
         page += 1
         if page > 25:
             break
+        time.sleep(0.5)
     return out
 
 
