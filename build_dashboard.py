@@ -196,6 +196,8 @@ TEMPLATE = r"""<!doctype html>
   <a href="index.html" class="on">Open tenders</a>
   <a href="expiry.html">Expiry radar</a>
   <a href="accounts.html">Account map</a>
+  <a href="changes.html">What changed</a>
+  <a href="regulation.html">Regulatory radar</a>
 </nav>
 <div class="wrap">
   <header class="desk">
