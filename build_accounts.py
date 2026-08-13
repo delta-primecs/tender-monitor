@@ -110,6 +110,31 @@ def compute_end(signed, end_date, no_end, dur, unit_key):
     return None
 
 
+# Title keywords that clearly indicate a service line. Used only to FLAG (never
+# override) contracts whose CPV disagrees with their title — because public
+# bodies frequently put the wrong CPV on a contract (garbage in). The title
+# often tells the truth when the CPV lies, so we surface the disagreement.
+TITLE_HINTS = {
+    "Εσωτερικός έλεγχος": ["εσωτερικού ελέγχ", "εσωτερικός έλεγχ", "μονάδα εσωτερικ",
+                            "εσωτερικού ελεγκτ", "εσωτερικός ελεγκτ"],
+    "Οικονομικός έλεγχος / Ορκωτοί": ["ορκωτ", "οικονομικών καταστάσεων",
+                                       "οικονομικός έλεγχ", "λογιστικός έλεγχ"],
+    "Διαχείριση κινδύνων": ["διαχείριση κινδύν", "διαχείρισης κινδύν"],
+    "Συμμόρφωση / Whistleblowing": ["κανονιστικής συμμόρφωσ", "κανονιστική συμμόρφωσ",
+                                     "υπεύθυν συμμόρφωσ", "εσωτερικών αναφορ", "4990", "υππα"],
+    "DPO / Προστασία δεδομένων": ["προστασία δεδομέν", "προστασίας δεδομέν",
+                                   "προσωπικών δεδομέν", "dpo", "υπεύθυν προστασίας"],
+    "Χαρτογράφηση / Οργάνωση": ["χαρτογράφησ", "καταγραφή διαδικασ", "καταγραφής διαδικασ"],
+}
+
+
+def title_service(title):
+    """The single service a title clearly indicates, else None if unclear/ambiguous."""
+    t = (title or "").lower()
+    hits = [svc for svc, keys in TITLE_HINTS.items() if any(k in t for k in keys)]
+    return hits[0] if len(hits) == 1 else None
+
+
 def parse(c):
     det = c.get("contractingDataDetails") or {}
     members = det.get("contractingMembersDataList") or []
@@ -129,11 +154,15 @@ def parse(c):
     end = compute_end(signed, c.get("endDate"), bool(c.get("noEndDate")),
                       c.get("contractDuration"),
                       (c.get("contractDurationUnitOfMeasure") or {}).get("key"))
+    title = (c.get("title") or "").strip()
+    ts = title_service(title)
+    conflict = ts if (ts and service and ts != service) else None
     return {
         "org": (c.get("organization") or {}).get("value"),
         "orgkey": (c.get("organization") or {}).get("key"),
         "region": (c.get("nutsCode") or {}).get("value"),
         "service": service,
+        "conflict": conflict,
         "holder": " / ".join(m.get("name", "") for m in members) or None,
         "signer": signer,
         "value": c.get("contractBudget") or c.get("totalCostWithoutVAT") or 0,
@@ -204,7 +233,8 @@ def build_accounts(rows):
             "newest": newest_signed, "newest_adam": newest_adam, "renewed": renewed,
             "next_end": nxt, "call_by": call_by,
             "has": [{"s": s, "holder": v["holder"], "v": v["value"],
-                     "end": v["end"], "signed": v["signed"], "adam": v["adam"]}
+                     "end": v["end"], "signed": v["signed"], "adam": v["adam"],
+                     "conflict": v.get("conflict")}
                     for s, v in sorted(per_service.items())],
             "gaps": [s for s in SERVICES if s not in per_service],
         })
@@ -286,6 +316,7 @@ TEMPLATE = r"""<!doctype html>
   .line{font-size:13px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
   .pill{font-size:11.5px;font-weight:600;border-radius:5px;padding:2px 8px;white-space:nowrap}
   .pill.has{background:var(--has-bg);color:var(--has)}
+  .pill.warn{background:#f7e0dc;color:#b23b2e;font-weight:700}
   .when{color:var(--muted);font-size:12.5px}
   .gaps{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .gaps .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gap);font-weight:700}
@@ -375,6 +406,7 @@ function render(){
     const d=daysTo(a.call_by), now=d!==null&&d<=30 && !a.renewed;
     const lines=a.has.map(h=>
       '<div class="line"><span class="pill has">'+h.s+'</span>'+
+      (h.conflict?'<span class="pill warn">⚠ τίτλος: '+h.conflict+'</span>':'')+
       '<span class="who">'+(h.holder||'—')+'</span>'+
       '<span class="when">'+(h.v?money(h.v):'')+(h.end?' · λήγει '+dmy(h.end):'')+(h.signed?' · υπ. '+dmy(h.signed):'')+'</span>'+
       (h.adam?' <a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+h.adam+'">σύμβαση ↗</a>':'')+
