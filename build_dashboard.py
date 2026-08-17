@@ -5,13 +5,26 @@ your professional categories, tags each one, and renders a branded, filterable
 search page. Static + free + always-on. Public data, no login. (~daily refresh.)
 """
 import os
+import sys
 import json
+import time
 from datetime import date, datetime, timezone, timedelta
 
 import requests
 
 NOTICE_URL = "https://cerpp.eprocurement.gov.gr/khmdhs-opendata/notice"
 OUT = "docs/index.html"
+
+SESSION = requests.Session()
+try:
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    SESSION.mount("https://", HTTPAdapter(max_retries=Retry(
+        total=4, connect=4, read=4, backoff_factor=2.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=frozenset(["GET", "POST"]))))
+except Exception:
+    pass
 
 # ── YOUR BRAND ──  put your firm name here (or leave "" to hide it)
 FIRM_NAME = ""
@@ -44,18 +57,29 @@ COMPETITIVE_PROCEDURES = {
 def fetch_notices(codes):
     body = {"cpvItems": codes,
             "dateFrom": (date.today() - timedelta(days=179)).isoformat()}
-    out, page = [], 0
+    out, page, fails = [], 0, 0
     while True:
-        r = requests.post(f"{NOTICE_URL}?page={page}", json=body,
-                          headers={"Accept": "application/json"}, timeout=60)
-        r.raise_for_status()
-        data = r.json()
+        try:
+            r = SESSION.post(f"{NOTICE_URL}?page={page}", json=body,
+                             headers={"Accept": "application/json"}, timeout=90)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            fails += 1
+            print(f"     page {page} failed ({type(e).__name__}); retry {fails}")
+            if fails >= 3:
+                print("     giving up on this category, keeping what we have")
+                break               # skip category, DON'T crash the whole build
+            time.sleep(8 * fails)
+            continue
+        fails = 0
         out.extend(data.get("content", []))
         if data.get("last", True):
             break
         page += 1
         if page > 30:
             break
+        time.sleep(0.4)
     return out
 
 
@@ -106,6 +130,12 @@ def build_html(items):
 
 def main():
     items = collect()
+    # SAFETY GUARD: never replace a good page with an empty one. If we got zero
+    # tenders, something upstream is wrong (API hiccup/change) — keep the last
+    # good page and fail loudly so the workflow goes red and alerts us.
+    if not items:
+        print("REFUSING to publish: 0 tenders returned. Keeping the last good page.")
+        sys.exit(1)
     os.makedirs("docs", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(build_html(items))
