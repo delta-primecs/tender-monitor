@@ -222,13 +222,8 @@ TEMPLATE = r"""<!doctype html>
 </style>
 </head>
 <body>
-<nav class="nav">
-  <a href="index.html" class="on">Open tenders</a>
-  <a href="expiry.html">Expiry radar</a>
-  <a href="accounts.html">Account map</a>
-  <a href="changes.html">What changed</a>
-  <a href="regulation.html">Regulatory radar</a>
-</nav>
+<div id="nav"></div>
+<script src="nav.js"></script>
 <div class="wrap">
   <header class="desk">
     <div class="top"><span class="dot" aria-hidden="true"></span><span class="live-label">Live · ΚΗΜΔΗΣ + ΕΣΗΔΗΣ</span></div>

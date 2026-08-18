@@ -329,13 +329,8 @@ TEMPLATE = r"""<!doctype html>
 </style>
 </head>
 <body>
-<nav class="nav">
-  <a href="index.html">Open tenders</a>
-  <a href="expiry.html">Expiry radar</a>
-  <a href="accounts.html" class="on">Account map</a>
-  <a href="changes.html">What changed</a>
-  <a href="regulation.html">Regulatory radar</a>
-</nav>
+<div id="nav"></div>
+<script src="nav.js"></script>
 <div class="wrap">
   <header class="desk">
     <div class="live-label">Accounts · ΚΗΜΔΗΣ</div>
