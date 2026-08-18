@@ -1,0 +1,41 @@
+name: Build Contractors
+
+on:
+  schedule:
+    - cron: "33 4,16 * * *"   # ~20 min after ingest, so the store is fresh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Build the contractors page
+        run: python build_contractors.py
+
+      - name: Publish the page
+        run: |
+          git config user.name "tender-bot"
+          git config user.email "tender-bot@users.noreply.github.com"
+          git add docs/contractors.html
+          if git diff --staged --quiet; then
+            echo "No change."; exit 0
+          fi
+          git commit -m "Update contractors"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "Published on attempt $i."; exit 0
+            fi
+            echo "Attempt $i failed — retrying."; sleep 10
+          done
+          exit 1
