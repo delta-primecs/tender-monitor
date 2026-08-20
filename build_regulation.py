@@ -20,11 +20,20 @@ import requests
 BASE = "https://diavgeia.gov.gr/luminapi/opendata"
 OUT = "docs/regulation.html"
 
-# The two bodies (confirmed IDs).
+# The bodies to watch. IDs resolved from Διαύγεια.
+# NOTE on Ελεγκτικό Συνέδριο: to add it, run resolve_orgs.py locally with
+# TARGETS = ["ΕΛΕΓΚΤΙΚΟ"] and paste the ID below (uncomment the line).
 ORGS = {
-    "100051206": "ΕΑΔ",
-    "100054492": "ΥΠΕΣ",
+    "100051206": "ΕΑΔ",       # Εθνική Αρχή Διαφάνειας — writes the standards
+    "100054492": "ΥΠΕΣ",      # Υπουργείο Εσωτερικών — the starting-gun circulars
+    # "TODO_ID": "Ελ.Συν.",   # Ελεγκτικό Συνέδριο — add when resolved
 }
+
+# Bodies whose ENTIRE output is by mandate relevant to your services.
+# For these we skip topic-filtering — trust the body, don't second-guess.
+# ΕΑΔ is *the* authority for internal audit & integrity in Greek public sector,
+# so filtering its output was silently dropping the most important source.
+TRUST_ORGS = {"ΕΑΔ"}
 
 # Regulatory decision types.
 REG_TYPES = {
@@ -34,16 +43,24 @@ REG_TYPES = {
     "2.4.1": "Κανονιστικό",
 }
 
-# Keep only subjects touching YOUR world (they're already from ΕΑΔ/ΥΠΕΣ).
+# For ΥΠΕΣ (which publishes across many fields — elections, personnel, etc.)
+# keep only subjects touching your world OR the alliance's (tax/accounting).
 TOPIC_HINTS = [
-    "εσωτερικού ελέγχ", "εσωτερικός έλεγχ", "μονάδα εσωτερικ", "σύστημα εσωτερικ",
-    "εσωτερικού ελεγκτ", "διαχείριση κινδύν", "διαχείρισης κινδύν", "κινδύν",
-    "συμμόρφωσ", "ακεραιότ", "προστασία δεδομέν", "δεδομένων προσωπ", "gdpr", "dpo",
-    "δικλίδ", "whistlebl", "4795", "4990", "διαύλ", "ελεγκτικ",
+    # audit / risk / integrity
+    "εσωτερικ", "έλεγχ", "ελεγκτ", "μονάδα εσωτερικ",
+    "διαχείριση κινδύν", "διαχείρισης κινδύν", "κινδύν",
+    "συμμόρφωσ", "ακεραιότ", "δικλίδ", "whistlebl", "διαύλ",
     "χαρτογράφησ", "ορκωτ", "δημοσιονομικ",
+    # data protection
+    "προστασία δεδομέν", "δεδομένων προσωπ", "gdpr", "dpo", "γκπδ",
+    # financial / accounting / tax  (alliance)
+    "λογιστ", "φορολογ", "μισθοδοσ", "προϋπολογισμ", "οικονομικ",
+    "διπλογραφικ", "ισολογισμ", "απολογισμ",
+    # laws we care about
+    "4795", "4990", "5013", "4624",
 ]
 # Explicit noise to drop even if a hint matches.
-EXCLUDE = ["νομιμότητ", "εκλογ", "πόθεν", "πειθαρχ", "αντικαπν"]
+EXCLUDE = ["νομιμότητ", "εκλογ", "πόθεν", "πειθαρχ", "αντικαπν", "εμβολιασ"]
 
 PAGES = 4     # per org+type; circulars are low-volume so this covers months
 PAUSE = 0.5
@@ -96,7 +113,8 @@ def collect():
                 if not recs:
                     break
                 for rec in recs:
-                    if not relevant(rec.get("subject")):
+                    # Trust ΕΑΔ's whole output; filter others by topic.
+                    if org_label not in TRUST_ORGS and not relevant(rec.get("subject")):
                         continue
                     ada = rec.get("ada")
                     if not ada or ada in found:
