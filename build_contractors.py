@@ -26,7 +26,7 @@ def load_store():
                 r = json.loads(line)
             except Exception:
                 continue
-            if r.get("holder"):
+            if r.get("holder") and not r.get("superseded_by"):
                 rows.append({
                     "holder": r.get("holder"),
                     "org": r.get("org"),
@@ -202,7 +202,31 @@ let sortKey='signed', sortDir=-1, current=[], grpMode='none';
 function filtered(){
   const q=qEl.value.trim().toLowerCase();
   if(!q) return [];
-  return ROWS.filter(r=>(r.holder||'').toLowerCase().includes(q));
+  return dedupRepublications(ROWS.filter(r=>(r.holder||'').toLowerCase().includes(q)));
+}
+
+// Public bodies sometimes republish the SAME contract to ΚΗΜΔΗΣ with a fresh
+// ΑΔΑΜ — typically to correct a typo, tax number, or attachment. Commercially
+// it is ONE contract, but the ingester (correctly) sees two records because
+// the ΑΔΑΜ differs. Collapse them here on the read side, keeping the newest
+// ΑΔΑΜ (the corrected version). Match key: holder + org + value + signed + end.
+// All five fields must agree — tight enough that genuine separate contracts
+// (even between the same parties in the same week) don't collapse.
+function dedupRepublications(rows){
+  const groups = new Map();
+  rows.forEach(r=>{
+    const k = [r.holder||'', r.org||'', r.value||0, r.signed||'', r.end||''].join('|');
+    (groups.get(k) || groups.set(k, []).get(k)).push(r);
+  });
+  const kept = [];
+  groups.forEach(g=>{
+    if(g.length === 1){ kept.push(g[0]); return; }
+    // Multiple with identical business fingerprint → keep newest ΑΔΑΜ.
+    // ΚΗΜΔΗΣ ΑΔΑΜ sort lexicographically in publication order, so max wins.
+    g.sort((a,b)=>(a.adam||'').localeCompare(b.adam||''));
+    kept.push(g[g.length-1]);
+  });
+  return kept;
 }
 
 function rowHTML(r){

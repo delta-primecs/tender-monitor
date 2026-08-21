@@ -184,9 +184,50 @@ def main():
     # what does each org already hold per service? (to spot renewals)
     latest = {}   # (orgkey, service) -> newest signed date we already have
     for rec in store.values():
+        if rec.get("superseded_by"):        # ignore records already flagged
+            continue
         k = (rec.get("orgkey"), rec.get("service"))
         if rec.get("signed") and rec["signed"] > latest.get(k, ""):
             latest[k] = rec["signed"]
+
+    # Fingerprint index for detecting REPUBLICATIONS — same commercial contract
+    # re-uploaded to ΚΗΜΔΗΣ with a fresh ΑΔΑΜ (correction / re-attachment).
+    # Safe 5-field key: holder + orgkey + value + signed + end. All must match.
+    def fingerprint(r):
+        return (
+            (r.get("holder") or "").strip(),
+            r.get("orgkey") or "",
+            r.get("value") or 0,
+            r.get("signed") or "",
+            r.get("end") or "",
+        )
+    prints = {}    # fingerprint -> ΑΔΑΜ of the canonical (non-superseded) record
+
+    # One-off backfill sweep: catch republications that entered the store
+    # BEFORE this dedup logic existed. Idempotent — records already flagged
+    # are skipped; if two active records share a fingerprint, keep the newest
+    # ΑΔΑΜ canonical and mark the rest superseded_by.
+    backfill_fp = {}
+    for adam, rec in store.items():
+        if rec.get("superseded_by"):
+            continue
+        fp = fingerprint(rec)
+        backfill_fp.setdefault(fp, []).append(adam)
+    backfilled = 0
+    for fp, adams in backfill_fp.items():
+        if len(adams) <= 1:
+            prints[fp] = adams[0]
+            continue
+        adams.sort()   # ΑΔΑΜ lexicographic order ~= chronological
+        canonical = adams[-1]
+        for a in adams[:-1]:
+            store[a] = {**store[a], "superseded_by": canonical}
+            backfilled += 1
+        # And record the canonical's supersedes chain (newest one wins)
+        store[canonical] = {**store[canonical], "supersedes": adams[-2]}
+        prints[fp] = canonical
+    if backfilled:
+        print(f"  backfill: marked {backfilled} historical republications")
 
     if first_run:
         print("First run — BACKFILL of", BACKFILL_MONTHS, "months …")
@@ -197,7 +238,7 @@ def main():
         print(f"Incremental — scanning {dfrom} → {dto}")
         wins = [(dfrom, dto)]
 
-    events, added, updated = [], 0, 0
+    events, added, updated, republished = [], 0, 0, 0
     for dfrom, dto in wins:
         if first_run:
             print(f"  {dfrom} → {dto}")
@@ -220,9 +261,39 @@ def main():
                                                  f"value {old.get('value')}→{p['value']}"})
                 continue
 
-            # brand-new ΑΔΑΜ
+            # New ΑΔΑΜ — but is it a republication of an existing contract?
+            fp = fingerprint(p)
+            older_adam = prints.get(fp)
+            if older_adam and older_adam != adam:
+                # REPUBLICATION: same commercial contract, fresh ΑΔΑΜ.
+                # Keep the newer one canonical (it's the corrected version) and
+                # flag the older with superseded_by so all readers can filter.
+                # ΑΔΑΜ sorts lexicographically ~ chronologically for ΚΗΜΔΗΣ.
+                if adam > older_adam:
+                    p["first_seen"] = today
+                    p["supersedes"] = older_adam
+                    store[adam] = p
+                    store[older_adam] = {**store[older_adam], "superseded_by": adam}
+                    prints[fp] = adam
+                else:
+                    # Incoming ΑΔΑΜ is older than one we already trust — record
+                    # it but mark it superseded so it never surfaces on pages.
+                    p["first_seen"] = today
+                    p["superseded_by"] = older_adam
+                    store[adam] = p
+                republished += 1
+                if not first_run:
+                    events.append({"date": today, "event": "REPUBLISH",
+                                   "adam": adam, "org": p["org"],
+                                   "service": p["service"],
+                                   "detail": f"republication of {older_adam}"})
+                # DO NOT touch latest[] or fire RENEWAL — this is one contract.
+                continue
+
+            # Truly brand-new contract
             p["first_seen"] = today
             store[adam] = p
+            prints[fp] = adam
             added += 1
             k = (p["orgkey"], p["service"])
             had_before = k in latest
@@ -240,7 +311,8 @@ def main():
     save_store(store)
     log_changes(events)
 
-    print(f"\nStore: {len(store)} contracts total  (+{added} new, {updated} updated)")
+    print(f"\nStore: {len(store)} contracts total  (+{added} new, "
+          f"{updated} updated, {republished} republications)")
     if not first_run:
         renewals = sum(1 for e in events if e["event"] == "RENEWAL")
         print(f"Events this run: {len(events)}  ({renewals} RENEWALS)")
