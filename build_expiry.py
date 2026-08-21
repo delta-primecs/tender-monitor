@@ -22,13 +22,13 @@ FORWARD_LIMIT_DAYS = 760   # ~25 months of future expiries
 
 # Same categories as the tender radar — edit to match.
 CPV_CATEGORIES = {
-    "Audit": ["79212000-3", "79212100-4", "79212200-5", "79212300-6", "79212400-7", "79212500-8"],
-    "Accounting & tax": ["79200000-6", "79210000-9", "79211000-6", "79211100-7", "79220000-2", "79221000-9", "79222000-6"],
-    "Consulting": ["79400000-8", "79410000-1", "79411000-8", "79411100-9", "79412000-5", "79413000-2", "79414000-9", "79418000-7", "79419000-4"],
-    "Legal": ["79100000-5", "79110000-8", "79111000-5", "79112000-2", "79140000-7"],
-    "Marketing & research": ["79300000-7", "79310000-0", "79320000-3", "79340000-9", "79341000-6"],
-    "HR & recruitment": ["79600000-0", "79610000-3"],
-    "Projects & office support": ["79420000-4", "79421000-1", "79500000-9"],
+    "Έλεγχος": ["79212000-3", "79212100-4", "79212200-5", "79212300-6", "79212400-7", "79212500-8"],
+    "Λογιστικά & Φορολογικά": ["79200000-6", "79210000-9", "79211000-6", "79211100-7", "79220000-2", "79221000-9", "79222000-6"],
+    "Συμβουλευτική": ["79400000-8", "79410000-1", "79411000-8", "79411100-9", "79412000-5", "79413000-2", "79414000-9", "79418000-7", "79419000-4"],
+    "Νομικά": ["79100000-5", "79110000-8", "79111000-5", "79112000-2", "79140000-7"],
+    "Marketing & έρευνα": ["79300000-7", "79310000-0", "79320000-3", "79340000-9", "79341000-6"],
+    "Ανθρώπινο δυναμικό": ["79600000-0", "79610000-3"],
+    "Έργα & διοικητική υποστήριξη": ["79420000-4", "79421000-1", "79500000-9"],
 }
 
 
@@ -223,30 +223,30 @@ TEMPLATE = r"""<!doctype html>
     <h1>Contract Expiry Radar</h1>
     <div class="sub">Running contracts and when they end — reach the client before the re-tender</div>
     <div class="readout">
-      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Shown</div></div>
+      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Εμφανίζονται</div></div>
       <div class="stat"><div class="n hot" id="stat-soon">0</div><div class="l">Ending ≤ 90 days</div></div>
-      <div class="stat"><div class="n" style="font-size:16px">__STAMP__</div><div class="l">Updated (Athens)</div></div>
+      <div class="stat"><div class="n" style="font-size:16px">__STAMP__</div><div class="l">Ενημερώθηκε</div></div>
     </div>
   </header>
   <div class="controls top">
     <label class="search">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="q" type="search" placeholder="Search — org, incumbent firm, keyword…" aria-label="Search contracts">
+      <input id="q" type="search" placeholder="Αναζήτηση — φορέας, ανάδοχος, λέξη-κλειδί…" aria-label="Αναζήτηση συμβάσεων">
     </label>
   </div>
   <div class="controls filters">
-    <div class="fgroup"><span class="flabel">Ends within</span>
+    <div class="fgroup"><span class="flabel">Λήγει εντός</span>
       <div class="seg" role="group" aria-label="Time window">
         <button data-win="90" aria-pressed="false">3 mo</button>
         <button data-win="180" aria-pressed="false">6 mo</button>
         <button data-win="365" aria-pressed="false">12 mo</button>
-        <button data-win="0" aria-pressed="true">All</button>
+        <button data-win="0" aria-pressed="true">Όλα</button>
       </div>
     </div>
     <div class="fgroup"><span class="flabel">Area</span><div class="seg" id="seg-cat" role="group" aria-label="Category"></div></div>
     <div class="fgroup"><span class="flabel">Min €</span>
       <div class="seg" role="group" aria-label="Minimum value">
-        <button data-min="0" aria-pressed="true">Any</button>
+        <button data-min="0" aria-pressed="true">Οποιαδήποτε</button>
         <button data-min="10000" aria-pressed="false">10k+</button>
         <button data-min="30000" aria-pressed="false">30k+</button>
       </div>
@@ -295,19 +295,19 @@ TEMPLATE = r"""<!doctype html>
       a.target='_blank';a.rel='noopener';a.style.animationDelay=Math.min(idx*12,260)+'ms';
       const e=fmtEnd(t.end);
       const exp='<span class="exp '+e.c+'">'+e.t+'</span>';
-      const amt=t.amount!=null?'<span class="amount">'+fmtMoney(t.amount)+'</span>':'<span class="amount unknown">Value n/a</span>';
+      const amt=t.amount!=null?'<span class="amount">'+fmtMoney(t.amount)+'</span>':'<span class="amount unknown">Χωρίς αξία</span>';
       const cats=(t.cats||[]).map(c=>'<span class="cat">'+c+'</span>').join('');
       const holder=t.holder?'<div class="holder">Ανάδοχος: <b>'+t.holder+'</b></div>':'';
       a.innerHTML='<div class="chips">'+exp+amt+cats+'</div><div class="subject">'+(t.s||'(χωρίς τίτλο)')+'</div>'+holder+
         '<div class="meta"><span class="org">'+(t.org||'')+(t.region?' · '+t.region:'')+'</span>'+
-        '<span class="open">Open contract <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>';
+        '<span class="open">Άνοιγμα σύμβασης <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>';
       listEl.appendChild(a);
     });
     emptyEl.style.display=rows.length?'none':'block';
     document.getElementById('stat-shown').textContent=rows.length;
     document.getElementById('stat-soon').textContent=CONTRACTS.filter(t=>{const d=daysTo(t.end);return d!==null&&d<=90;}).length;
   }
-  document.getElementById('seg-cat').innerHTML='<button data-cat="all" aria-pressed="true">All</button>'+
+  document.getElementById('seg-cat').innerHTML='<button data-cat="all" aria-pressed="true">Όλα</button>'+
     CATS.map(c=>'<button data-cat="'+c+'">'+c+'</button>').join('');
   function wire(sel, apply){
     document.querySelectorAll(sel).forEach(b=>b.addEventListener('click',()=>{

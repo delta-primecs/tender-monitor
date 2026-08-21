@@ -32,15 +32,15 @@ FIRM_NAME = ""
 # ── WHAT TO WATCH ──  CPV codes grouped into categories users can filter by.
 # Add your partners' verticals here anytime (e.g. IT: 72xxx, Legal: 79100000-5).
 CPV_CATEGORIES = {
-    "Audit": [
+    "Έλεγχος": [
         "79212000-3", "79212100-4", "79212200-5",
         "79212300-6", "79212400-7", "79212500-8",
     ],
-    "Accounting & tax": [
+    "Λογιστικά & Φορολογικά": [
         "79200000-6", "79210000-9", "79211000-6", "79211100-7",
         "79220000-2", "79221000-9", "79222000-6",
     ],
-    "Consulting": [
+    "Συμβουλευτική": [
         "79400000-8", "79410000-1", "79411000-8", "79411100-9",
         "79412000-5", "79413000-2", "79414000-9", "79418000-7", "79419000-4",
     ],
@@ -230,42 +230,42 @@ TEMPLATE = r"""<!doctype html>
     <h1>Tender Radar</h1>
     <div class="sub">Ανοιχτοί δημόσιοι διαγωνισμοί__FIRM__</div>
     <div class="readout">
-      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Shown</div></div>
+      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Εμφανίζονται</div></div>
       <div class="stat"><div class="n hot" id="stat-closing">0</div><div class="l">Closing ≤ 3 days</div></div>
-      <div class="stat"><div class="n" style="font-size:16px">__STAMP__</div><div class="l">Updated (Athens)</div></div>
+      <div class="stat"><div class="n" style="font-size:16px">__STAMP__</div><div class="l">Ενημερώθηκε</div></div>
     </div>
   </header>
   <div class="controls top">
     <label class="search">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="q" type="search" placeholder="Search — δήμος, νοσοκομείο, keyword, ΑΔΑΜ…" aria-label="Search tenders">
+      <input id="q" type="search" placeholder="Αναζήτηση — δήμος, νοσοκομείο, λέξη-κλειδί, ΑΔΑΜ…" aria-label="Αναζήτηση διαγωνισμών">
     </label>
   </div>
   <div class="controls filters">
     <div class="fgroup"><span class="flabel">Area</span><div class="seg" id="seg-cat" role="group" aria-label="Category"></div></div>
     <div class="fgroup"><span class="flabel">Type</span>
       <div class="seg" role="group" aria-label="Procedure">
-        <button data-proc="all" aria-pressed="true">All</button>
+        <button data-proc="all" aria-pressed="true">Όλα</button>
         <button data-proc="competition" aria-pressed="false">Competitions</button>
         <button data-proc="direct" aria-pressed="false">Direct</button>
       </div>
     </div>
     <div class="fgroup"><span class="flabel">Min €</span>
       <div class="seg" role="group" aria-label="Minimum value">
-        <button data-min="0" aria-pressed="true">Any</button>
+        <button data-min="0" aria-pressed="true">Οποιαδήποτε</button>
         <button data-min="10000" aria-pressed="false">10k+</button>
         <button data-min="30000" aria-pressed="false">30k+</button>
       </div>
     </div>
-    <div class="fgroup"><span class="flabel">Sort</span>
+    <div class="fgroup"><span class="flabel">Ταξινόμηση</span>
       <div class="seg" role="group" aria-label="Sort">
         <button data-sort="deadline" aria-pressed="true">Closing</button>
-        <button data-sort="value" aria-pressed="false">Value</button>
+        <button data-sort="value" aria-pressed="false">Αξία</button>
       </div>
     </div>
   </div>
   <main class="list" id="list"></main>
-  <div class="empty" id="empty">Nothing matches these filters.</div>
+  <div class="empty" id="empty">Καμία εγγραφή δεν ταιριάζει με τα φίλτρα.</div>
 </div>
 <p class="foot">
   Live from <b>ΚΗΜΔΗΣ</b> (which already includes ΕΣΗΔΗΣ tenders) · open tenders only, deadline not passed.
@@ -308,12 +308,12 @@ TEMPLATE = r"""<!doctype html>
       a.target='_blank';a.rel='noopener';a.style.animationDelay=Math.min(idx*14,280)+'ms';
       const ck=clockLabel(t.deadline);
       const clock='<span class="clock '+ck.c+'">'+ck.t+'</span>';
-      const amt=t.amount!=null?'<span class="amount">'+fmtMoney(t.amount)+'</span>':'<span class="amount unknown">Value n/a</span>';
+      const amt=t.amount!=null?'<span class="amount">'+fmtMoney(t.amount)+'</span>':'<span class="amount unknown">Χωρίς αξία</span>';
       const cats=(t.cats||[]).map(c=>'<span class="cat '+catClass(c)+'">'+c+'</span>').join('');
       const proc=t.proc?'<span class="proc'+(t.kind==='competition'?' win':'')+'">'+t.proc+'</span>':'';
       a.innerHTML='<div class="chips">'+clock+amt+cats+proc+'</div><div class="subject">'+(t.s||'(χωρίς τίτλο)')+'</div>'+
         '<div class="meta"><span class="org">'+(t.org||'')+'</span>'+
-        '<span class="open">Open document <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>';
+        '<span class="open">Άνοιγμα εγγράφου <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>';
       listEl.appendChild(a);
     });
     emptyEl.style.display=rows.length?'none':'block';
@@ -322,7 +322,7 @@ TEMPLATE = r"""<!doctype html>
   }
   // build category buttons
   const segCat=document.getElementById('seg-cat');
-  segCat.innerHTML='<button data-cat="all" aria-pressed="true">All</button>'+
+  segCat.innerHTML='<button data-cat="all" aria-pressed="true">Όλα</button>'+
     CATS.map(c=>'<button data-cat="'+c+'" aria-pressed="false">'+c+'</button>').join('');
   function wire(sel, apply){
     document.querySelectorAll(sel).forEach(b=>b.addEventListener('click',()=>{
