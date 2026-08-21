@@ -88,6 +88,24 @@ TEMPLATE = r"""<!doctype html>
   .btn{font:inherit;font-size:13px;font-weight:600;color:#fff;background:var(--link);border:0;padding:10px 14px;border-radius:9px;cursor:pointer}
   .btn:hover{background:var(--link-ink)}
   .btn[disabled]{background:#b5c2c0;cursor:default}
+  .profile{background:#f6f9f8;border-left:1px solid var(--hair);border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:14px 18px}
+  .profile-head{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--hair)}
+  .profile-name{font-family:'Commissioner',sans-serif;font-weight:700;font-size:18px;color:var(--ink);letter-spacing:-.005em}
+  .profile-stats{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-left:auto}
+  .profile-stats b{color:var(--link-ink);font-family:'Commissioner',sans-serif;font-weight:700;font-size:13px}
+  .profile-lines{padding:10px 0 4px;display:flex;flex-direction:column;gap:5px}
+  .profile-line{font-size:13px;color:var(--muted)}
+  .profile-line .p-label{color:var(--muted);font-weight:600;letter-spacing:.02em}
+  .profile-line .p-value{color:var(--text)}
+  .profile-line.hot .p-value{color:var(--gold);font-weight:700}
+  .profile-tools{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:10px;border-top:1px solid var(--hair)}
+  .p-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .seg{display:inline-flex;border:1px solid var(--hair);border-radius:7px;overflow:hidden;background:#fff}
+  .seg button{font:inherit;font-size:12px;font-weight:500;color:var(--muted);background:#fff;border:0;padding:5px 10px;cursor:pointer;border-left:1px solid var(--hair)}
+  .seg button:first-child{border-left:0}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  tr.group-head td{background:#f0f4f2;font-family:'Commissioner',sans-serif;font-weight:700;color:var(--ink);font-size:13px;padding-top:14px;padding-bottom:8px;letter-spacing:.005em}
+  tr.group-head td .g-count{color:var(--muted);font-weight:500;font-size:12px;font-family:'Inter',sans-serif;margin-left:8px}
   .list{background:var(--card);border:1px solid var(--hair);border-top:0;border-radius:0 0 14px 14px;overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:10px 12px;text-align:left;border-top:1px solid var(--hair);vertical-align:top}
@@ -126,6 +144,30 @@ TEMPLATE = r"""<!doctype html>
     <div class="search"><input id="q" type="search" placeholder="Ανάδοχος — π.χ. EMERA, LEVER, AUDIT REVIEW…" autofocus></div>
     <button id="dl" class="btn" disabled>Download CSV</button>
   </div>
+  <section id="profile" class="profile" style="display:none">
+    <div class="profile-head">
+      <div class="profile-name" id="p-name"></div>
+      <div class="profile-stats">
+        <span><b id="p-contracts">0</b> συμβάσεις</span>
+        <span><b id="p-value">0 €</b> συνολική αξία</span>
+        <span><b id="p-clients">0</b> διαφορετικοί φορείς</span>
+        <span>μ.ό. <b id="p-avg">0 €</b> ανά σύμβαση</span>
+      </div>
+    </div>
+    <div class="profile-lines">
+      <div class="profile-line"><span class="p-label">Κυρίως δραστήρια σε:</span> <span id="p-topsvc" class="p-value">—</span></div>
+      <div class="profile-line"><span class="p-label">Τελευταία υπογραφή:</span> <span id="p-latest" class="p-value">—</span></div>
+      <div class="profile-line hot"><span class="p-label">Λήγουν στους επόμενους 6 μήνες:</span> <span id="p-expiring" class="p-value">—</span></div>
+    </div>
+    <div class="profile-tools">
+      <span class="p-label">Ομαδοποίηση:</span>
+      <div class="seg">
+        <button data-grp="none" aria-pressed="true">Καμία</button>
+        <button data-grp="service" aria-pressed="false">Ανά υπηρεσία</button>
+        <button data-grp="org" aria-pressed="false">Ανά οργανισμό</button>
+      </div>
+    </div>
+  </section>
   <main class="list">
     <table id="tbl">
       <thead><tr>
@@ -150,15 +192,93 @@ TEMPLATE = r"""<!doctype html>
 const ROWS = __DATA__;
 const qEl=document.getElementById('q'), body=document.getElementById('body'),
       empty=document.getElementById('empty'), dl=document.getElementById('dl');
+const profile=document.getElementById('profile');
 const money=n=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:0}).format(n||0)+' €';
 const dmy=s=>s?s.split('-').reverse().join('/'):'';
-let sortKey='signed', sortDir=-1, current=[];
+const TODAY = new Date().toISOString().slice(0,10);
+const SIX_MO = (()=>{const d=new Date();d.setMonth(d.getMonth()+6);return d.toISOString().slice(0,10);})();
+let sortKey='signed', sortDir=-1, current=[], grpMode='none';
 
 function filtered(){
   const q=qEl.value.trim().toLowerCase();
   if(!q) return [];
   return ROWS.filter(r=>(r.holder||'').toLowerCase().includes(q));
 }
+
+function rowHTML(r){
+  return '<tr>'+
+    '<td class="holder">'+(r.holder||'')+'</td>'+
+    '<td class="org">'+(r.org||'')+(r.region?' <span class="date">· '+r.region+'</span>':'')+'</td>'+
+    '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+'</td>'+
+    '<td class="value">'+money(r.value)+'</td>'+
+    '<td class="date">'+dmy(r.signed)+'</td>'+
+    '<td class="date">'+dmy(r.end)+'</td>'+
+    '<td class="adam">'+(r.adam?'<a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+r.adam+'">'+r.adam+' ↗</a>':'')+'</td>'+
+  '</tr>';
+}
+
+function renderProfile(rows){
+  if(!rows.length){ profile.style.display='none'; return; }
+  // Dominant holder name (there may be minor spelling variants — pick the most common)
+  const nameCount={};
+  rows.forEach(r=>{ const n=r.holder||''; nameCount[n]=(nameCount[n]||0)+1; });
+  const topName = Object.keys(nameCount).sort((a,b)=>nameCount[b]-nameCount[a])[0];
+
+  const totalVal = rows.reduce((s,r)=>s+(r.value||0),0);
+  const clients  = new Set(rows.map(r=>r.org).filter(Boolean)).size;
+  const avg      = rows.length ? totalVal/rows.length : 0;
+
+  // Top service
+  const svcCount={};
+  rows.forEach(r=>{ if(r.service){ svcCount[r.service]=(svcCount[r.service]||0)+1; }});
+  const svcRanked = Object.entries(svcCount).sort((a,b)=>b[1]-a[1]);
+  const topSvcText = svcRanked.length
+    ? svcRanked.slice(0,3).map(([s,n])=>s+' ('+n+')').join(' · ')
+    : '—';
+
+  // Latest signing
+  const dated = rows.filter(r=>r.signed).sort((a,b)=>b.signed.localeCompare(a.signed));
+  const latest = dated[0];
+  const latestText = latest
+    ? dmy(latest.signed)+' — '+(latest.org||'—')
+    : '—';
+
+  // Expiring in the next 6 months
+  const expiring = rows.filter(r=>r.end && r.end>=TODAY && r.end<=SIX_MO)
+                       .sort((a,b)=>a.end.localeCompare(b.end));
+  const expText = expiring.length
+    ? expiring.length+' — από '+dmy(expiring[0].end)+' ('+(expiring[0].org||'—')+')'
+    : 'καμία';
+
+  document.getElementById('p-name').textContent      = topName;
+  document.getElementById('p-contracts').textContent = rows.length;
+  document.getElementById('p-value').textContent     = money(totalVal);
+  document.getElementById('p-clients').textContent   = clients;
+  document.getElementById('p-avg').textContent       = money(avg);
+  document.getElementById('p-topsvc').textContent    = topSvcText;
+  document.getElementById('p-latest').textContent    = latestText;
+  document.getElementById('p-expiring').textContent  = expText;
+  profile.style.display='block';
+}
+
+function renderGrouped(rows){
+  // Group rows by the chosen key, preserving current sort inside each group.
+  const key = grpMode==='service' ? 'service' : 'org';
+  const groups = {};
+  rows.forEach(r=>{
+    const k = r[key] || '(χωρίς τιμή)';
+    (groups[k] = groups[k] || []).push(r);
+  });
+  // Sort groups by size, biggest first
+  const ordered = Object.entries(groups).sort((a,b)=>b[1].length-a[1].length);
+  return ordered.map(([g, gRows])=>{
+    const gVal = gRows.reduce((s,r)=>s+(r.value||0),0);
+    return '<tr class="group-head"><td colspan="7">'+g+
+           ' <span class="g-count">'+gRows.length+' συμβάσεις · '+money(gVal)+'</span></td></tr>'+
+           gRows.map(rowHTML).join('');
+  }).join('');
+}
+
 function render(){
   current = filtered().slice();
   current.sort((a,b)=>{
@@ -166,16 +286,10 @@ function render(){
     if(sortKey==='value') return (x-y)*sortDir;
     return String(x).localeCompare(String(y),'el')*sortDir;
   });
-  body.innerHTML = current.slice(0,2000).map(r=>
-    '<tr>'+
-      '<td class="holder">'+(r.holder||'')+'</td>'+
-      '<td class="org">'+(r.org||'')+(r.region?' <span class="date">· '+r.region+'</span>':'')+'</td>'+
-      '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+'</td>'+
-      '<td class="value">'+money(r.value)+'</td>'+
-      '<td class="date">'+dmy(r.signed)+'</td>'+
-      '<td class="date">'+dmy(r.end)+'</td>'+
-      '<td class="adam">'+(r.adam?'<a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+r.adam+'">'+r.adam+' ↗</a>':'')+'</td>'+
-    '</tr>').join('');
+  renderProfile(current);
+  body.innerHTML = grpMode==='none'
+    ? current.slice(0,2000).map(rowHTML).join('')
+    : renderGrouped(current.slice(0,2000));
   const showing = qEl.value.trim().length > 0;
   empty.style.display = (!showing || current.length===0) ? 'block' : 'none';
   empty.textContent = !showing ? 'Γράψε όνομα αναδόχου παραπάνω.'
@@ -185,6 +299,11 @@ function render(){
   dl.disabled = current.length===0;
 }
 qEl.addEventListener('input', render);
+document.querySelectorAll('[data-grp]').forEach(b=>b.addEventListener('click',()=>{
+  grpMode = b.dataset.grp;
+  document.querySelectorAll('[data-grp]').forEach(x=>x.setAttribute('aria-pressed', x===b));
+  render();
+}));
 document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{
   const k=th.dataset.k;
   if(sortKey===k) sortDir=-sortDir; else { sortKey=k; sortDir = (k==='value'||k==='signed'||k==='end') ? -1 : 1; }
