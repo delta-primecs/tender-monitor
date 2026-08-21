@@ -238,10 +238,13 @@ def build_accounts(rows):
             "org": oname, "region": region, "signer": signer,
             "newest": newest_signed, "newest_adam": newest_adam, "renewed": renewed,
             "next_end": nxt, "call_by": call_by,
+            # Sort service lines by soonest expiry so the eye lands on what's
+            # actionable first. Missing end dates sink to the bottom.
             "has": [{"s": s, "holder": v["holder"], "v": v["value"],
                      "end": v["end"], "signed": v["signed"], "adam": v["adam"],
                      "conflict": v.get("conflict")}
-                    for s, v in sorted(per_service.items())],
+                    for s, v in sorted(per_service.items(),
+                                       key=lambda kv: kv[1]["end"] or "9999-99-99")],
             "gaps": [s for s in SERVICES if s not in per_service],
         })
 
@@ -320,6 +323,7 @@ TEMPLATE = r"""<!doctype html>
   .verify:hover{text-decoration:underline}
   .lines{margin-top:10px;display:flex;flex-direction:column;gap:5px}
   .line{font-size:13px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .line.past{opacity:.55}
   .pill{font-size:11.5px;font-weight:600;border-radius:5px;padding:2px 8px;white-space:nowrap}
   .pill.has{background:var(--has-bg);color:var(--has)}
   .pill.warn{background:#f7e0dc;color:#b23b2e;font-weight:700}
@@ -405,13 +409,15 @@ function render(){
   listEl.innerHTML='';
   rows.slice(0,400).forEach(a=>{
     const d=daysTo(a.call_by), now=d!==null&&d<=30 && !a.renewed;
-    const lines=a.has.map(h=>
-      '<div class="line"><span class="pill has">'+h.s+'</span>'+
-      (h.conflict?'<span class="pill warn">⚠ τίτλος: '+h.conflict+'</span>':'')+
-      '<span class="who">'+(h.holder||'—')+'</span>'+
-      '<span class="when">'+(h.v?money(h.v):'')+(h.end?' · λήγει '+dmy(h.end):'')+(h.signed?' · υπ. '+dmy(h.signed):'')+'</span>'+
-      (h.adam?' <a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+h.adam+'">σύμβαση ↗</a>':'')+
-      '</div>').join('');
+    const lines=a.has.map(h=>{
+      const past = h.end && h.end < TODAY;
+      return '<div class="line'+(past?' past':'')+'"><span class="pill has">'+h.s+'</span>'+
+        (h.conflict?'<span class="pill warn">⚠ τίτλος: '+h.conflict+'</span>':'')+
+        '<span class="who">'+(h.holder||'—')+'</span>'+
+        '<span class="when">'+(h.v?money(h.v):'')+(h.end?' · λήγει '+dmy(h.end):'')+(h.signed?' · υπ. '+dmy(h.signed):'')+'</span>'+
+        (h.adam?' <a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+h.adam+'">σύμβαση ↗</a>':'')+
+        '</div>';
+    }).join('');
     const gaps=a.gaps.length?'<div class="gaps"><span class="lbl">Δεν έχει</span>'+
       a.gaps.map(g=>'<span class="pill gap">'+g+'</span>').join('')+'</div>':'';
     const renew=a.renewed?'<span class="renew">ΑΝΑΝΕΩΘΗΚΕ '+dmy(a.newest)+'</span>':'';
