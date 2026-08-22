@@ -141,17 +141,84 @@ def title_service(title):
     return hits[0] if len(hits) == 1 else None
 
 
+# ── SUSPICIOUS-CPV SET ─────────────────────────────────────────────
+# Umbrella CPV codes that Greek public bodies notoriously mis-tag.
+# We still map them to services (so tenders aren't invisible) BUT any row
+# using them carries a warning flag so the user verifies before acting.
+UMBRELLA_CPVS = {
+    "79200000-6",   # τραπεζικές / επιχειρηματικές γενικά
+    "79411000-8",   # management consulting generally
+    "79220000-2",   # financial services generally
+    "72221000-0",   # business analysis consulting generally
+}
+
+# ── FIRM-NAME vs SERVICE MISMATCH ──────────────────────────────────
+# When a contractor's NAME contains these keywords, the firm is almost
+# certainly not a real provider of the mapped service. E.g. a firm called
+# "ΤΕΧΝΙΚΗ ΕΝΕΡΓΕΙΑΚΗ" doing "Εσωτερικός έλεγχος" is a Δήμος tagging error,
+# not a real audit engagement. Deliberately conservative — only fire on
+# STRONG negative signals to keep false positives low.
+NAME_INCOMPATIBLE_HINTS = {
+    "Εσωτερικός έλεγχος": [
+        "τεχνικ", "ενεργειακ", "κατασκευ", "μηχανικ", "εκπαιδευτικ",
+        "καθαρι", "τροφί", "εστιατ", "κατασκηνώσ",
+    ],
+    "Οικονομικός έλεγχος / Ορκωτοί": [
+        "τεχνικ", "ενεργειακ", "κατασκευ", "εκπαιδευτικ", "καθαρι",
+    ],
+    "Διαχείριση κινδύνων": [
+        "εκπαιδευτικ", "καθαρι", "κατασκευ", "τροφί", "εστιατ",
+    ],
+    "Συμμόρφωση / Whistleblowing": [
+        "τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι",
+    ],
+    "DPO / Προστασία δεδομένων": [
+        "κατασκευ", "εκπαιδευτικ", "καθαρι", "τροφί", "εστιατ",
+    ],
+    "Χαρτογράφηση / Οργάνωση": [
+        "τεχνικ", "ενεργειακ", "κατασκευ", "εκπαιδευτικ", "καθαρι",
+        "τροφί", "εστιατ", "μηχανικ",
+    ],
+    "Λογιστικές υπηρεσίες": [
+        "τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι", "μηχανικ",
+    ],
+    "Φορολογικές υπηρεσίες": [
+        "τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι", "μηχανικ",
+    ],
+    "Μισθοδοσία": [
+        "τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι", "μηχανικ",
+    ],
+    "Επιχειρηματική / οικονομική συμβουλευτική": [
+        "εκπαιδευτικ", "καθαρι", "τροφί", "εστιατ",
+    ],
+}
+
+
+def firm_incompatible(holder, service):
+    """Return True if the firm name strongly conflicts with the service."""
+    if not holder or not service:
+        return False
+    hits = NAME_INCOMPATIBLE_HINTS.get(service, [])
+    h = holder.lower()
+    return any(k in h for k in hits)
+
+
 def parse(c):
     det = c.get("contractingDataDetails") or {}
     members = det.get("contractingMembersDataList") or []
     signer = (det.get("signers") or {}).get("value")
 
+    # Capture BOTH the matched service AND the CPV that triggered it,
+    # so we can flag umbrella-CPV matches downstream.
     service = None
+    matched_cpv = None
     for obj in (c.get("objectDetailsList") or []):
         for cp in (obj.get("cpvs") or []):
-            s = SERVICE_OF.get(str(cp.get("key", "")).strip())
+            code = str(cp.get("key", "")).strip()
+            s = SERVICE_OF.get(code)
             if s:
                 service = s
+                matched_cpv = code
                 break
         if service:
             break
@@ -162,14 +229,22 @@ def parse(c):
                       (c.get("contractDurationUnitOfMeasure") or {}).get("key"))
     title = (c.get("title") or "").strip()
     ts = title_service(title)
-    conflict = ts if (ts and service and ts != service) else None
+    holder = " / ".join(m.get("name", "") for m in members) or None
+
+    # Three independent warning signals — each surfaces its own tag:
+    conflict     = ts if (ts and service and ts != service) else None
+    umbrella     = matched_cpv in UMBRELLA_CPVS
+    firm_bad_fit = firm_incompatible(holder, service)
+
     return {
         "org": (c.get("organization") or {}).get("value"),
         "orgkey": (c.get("organization") or {}).get("key"),
         "region": (c.get("nutsCode") or {}).get("value"),
         "service": service,
         "conflict": conflict,
-        "holder": " / ".join(m.get("name", "") for m in members) or None,
+        "umbrella": umbrella,
+        "firm_bad_fit": firm_bad_fit,
+        "holder": holder,
         "signer": signer,
         "value": c.get("contractBudget") or c.get("totalCostWithoutVAT") or 0,
         "signed": signed,
@@ -238,11 +313,11 @@ def build_accounts(rows):
             "org": oname, "region": region, "signer": signer,
             "newest": newest_signed, "newest_adam": newest_adam, "renewed": renewed,
             "next_end": nxt, "call_by": call_by,
-            # Sort service lines by soonest expiry so the eye lands on what's
-            # actionable first. Missing end dates sink to the bottom.
             "has": [{"s": s, "holder": v["holder"], "v": v["value"],
                      "end": v["end"], "signed": v["signed"], "adam": v["adam"],
-                     "conflict": v.get("conflict")}
+                     "conflict": v.get("conflict"),
+                     "umbrella": v.get("umbrella"),
+                     "firm_bad_fit": v.get("firm_bad_fit")}
                     for s, v in sorted(per_service.items(),
                                        key=lambda kv: kv[1]["end"] or "9999-99-99")],
             "gaps": [s for s in SERVICES if s not in per_service],
@@ -327,6 +402,8 @@ TEMPLATE = r"""<!doctype html>
   .pill{font-size:11.5px;font-weight:600;border-radius:5px;padding:2px 8px;white-space:nowrap}
   .pill.has{background:var(--has-bg);color:var(--has)}
   .pill.warn{background:#f7e0dc;color:#b23b2e;font-weight:700}
+  .pill.badfit{background:#f4d0cb;color:#8a1a10;font-weight:700;cursor:help}
+  .pill.umbrella{background:#f6ecd2;color:#8a5a11;font-weight:600;cursor:help}
   .when{color:var(--muted);font-size:12.5px}
   .gaps{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .gaps .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gap);font-weight:700}
@@ -412,7 +489,9 @@ function render(){
     const lines=a.has.map(h=>{
       const past = h.end && h.end < TODAY;
       return '<div class="line'+(past?' past':'')+'"><span class="pill has">'+h.s+'</span>'+
+        (h.firm_bad_fit?'<span class="pill badfit" title="Το όνομα του αναδόχου δεν ταιριάζει με αυτή την υπηρεσία — επιβεβαίωσε στο ΚΗΜΔΗΣ πριν καλέσεις">⚠ ανάδοχος δεν ταιριάζει</span>':'')+
         (h.conflict?'<span class="pill warn">⚠ τίτλος: '+h.conflict+'</span>':'')+
+        (h.umbrella?'<span class="pill umbrella" title="Ο CPV είναι γενικός (umbrella) — μπορεί να καλύπτει άλλη υπηρεσία, έλεγξε τη σύμβαση">⚠ CPV γενικός</span>':'')+
         '<span class="who">'+(h.holder||'—')+'</span>'+
         '<span class="when">'+(h.v?money(h.v):'')+(h.end?' · λήγει '+dmy(h.end):'')+(h.signed?' · υπ. '+dmy(h.signed):'')+'</span>'+
         (h.adam?' <a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+h.adam+'">σύμβαση ↗</a>':'')+
