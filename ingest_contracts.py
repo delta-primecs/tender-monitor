@@ -119,6 +119,25 @@ def compute_end(signed, end_date, no_end, dur, unit_key):
     return None
 
 
+# Amendment keywords — appearing in a contract subject/title, these signal that
+# the record is a CHILD of an earlier contract (extension/modification/supplement)
+# rather than a fresh, independent contract. We tag but do NOT merge yet — user
+# will observe how noisy this signal is on real data before we act on it.
+AMENDMENT_KEYWORDS = [
+    "παράταση", "παρατάσεως", "παρατάσεων", "παρατασεις",
+    "τροποποίηση", "τροποποιήσεως", "τροποποιητικ",
+    "συμπληρωματικ",
+    "παράταση της σύμβασης", "τροποποίηση της σύμβασης",
+]
+
+
+def is_amendment(subject):
+    if not subject:
+        return False
+    s = subject.lower()
+    return any(k in s for k in AMENDMENT_KEYWORDS)
+
+
 def parse(c):
     det = c.get("contractingDataDetails") or {}
     members = det.get("contractingMembersDataList") or []
@@ -132,6 +151,7 @@ def parse(c):
         if service:
             break
     signed = (c.get("contractSignedDate") or "")[:10] or None
+    subject = (c.get("title") or c.get("subject") or "").strip() or None
     return {
         "adam": c.get("referenceNumber"),
         "org": (c.get("organization") or {}).get("value"),
@@ -145,6 +165,8 @@ def parse(c):
         "end": compute_end(signed, c.get("endDate"), bool(c.get("noEndDate")),
                            c.get("contractDuration"),
                            (c.get("contractDurationUnitOfMeasure") or {}).get("key")),
+        "subject": subject,
+        "amendment": is_amendment(subject),
     }
 
 
@@ -250,15 +272,24 @@ def main():
 
             if adam in store:
                 old = store[adam]
+                changed = False
+                # Enrich existing records with new fields (subject / amendment)
+                # if they lack them — one-time backfill via the incremental window.
+                if "subject" not in old and p.get("subject"):
+                    old = {**old, "subject": p["subject"], "amendment": p["amendment"]}
+                    changed = True
                 if old.get("end") != p["end"] or old.get("value") != p["value"]:
-                    store[adam] = {**old, "end": p["end"], "value": p["value"]}
+                    old = {**old, "end": p["end"], "value": p["value"]}
                     updated += 1
                     if not first_run:
                         events.append({"date": today, "event": "UPDATED",
                                        "adam": adam, "org": p["org"],
                                        "service": p["service"],
-                                       "detail": f"end {old.get('end')}→{p['end']}, "
-                                                 f"value {old.get('value')}→{p['value']}"})
+                                       "detail": f"end {store[adam].get('end')}→{p['end']}, "
+                                                 f"value {store[adam].get('value')}→{p['value']}"})
+                    changed = True
+                if changed:
+                    store[adam] = old
                 continue
 
             # New ΑΔΑΜ — but is it a republication of an existing contract?

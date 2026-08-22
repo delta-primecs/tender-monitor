@@ -36,6 +36,8 @@ def load_store():
                     "signed": r.get("signed"),
                     "end": r.get("end"),
                     "adam": r.get("adam"),
+                    "amendment": bool(r.get("amendment")),
+                    "subject": r.get("subject") or "",
                 })
     # newest first
     rows.sort(key=lambda x: x.get("signed") or "", reverse=True)
@@ -116,6 +118,8 @@ TEMPLATE = r"""<!doctype html>
   .holder{font-weight:600;color:var(--link-ink)}
   .org{color:var(--text)}
   .service{font-size:11.5px;font-weight:600;color:var(--tag);background:var(--tag-bg);border-radius:5px;padding:2px 8px;white-space:nowrap}
+  .tag-amend{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#8a5a11;background:#f6ecd2;border-radius:5px;padding:2px 8px;white-space:nowrap;cursor:help}
+  tr.is-amend td{background:#fdfbf3}
   .value{font-family:'Commissioner',sans-serif;font-weight:700;color:var(--gold);white-space:nowrap}
   .date{color:var(--muted);white-space:nowrap}
   .adam{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--muted)}
@@ -230,10 +234,13 @@ function dedupRepublications(rows){
 }
 
 function rowHTML(r){
-  return '<tr>'+
+  const amend = r.amendment
+    ? '<span class="tag-amend" title="'+(r.subject||'').replace(/"/g,'&quot;')+'">ΠΑΡΑΤΑΣΗ / ΤΡΟΠΟΠΟΙΗΣΗ</span>'
+    : '';
+  return '<tr'+(r.amendment?' class="is-amend"':'')+'>'+
     '<td class="holder">'+(r.holder||'')+'</td>'+
     '<td class="org">'+(r.org||'')+(r.region?' <span class="date">· '+r.region+'</span>':'')+'</td>'+
-    '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+'</td>'+
+    '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+amend+'</td>'+
     '<td class="value">'+money(r.value)+'</td>'+
     '<td class="date">'+dmy(r.signed)+'</td>'+
     '<td class="date">'+dmy(r.end)+'</td>'+
