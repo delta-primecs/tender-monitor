@@ -25,9 +25,14 @@ def load_events():
             line = line.strip()
             if line:
                 try:
-                    out.append(json.loads(line))
+                    ev = json.loads(line)
                 except Exception:
-                    pass
+                    continue
+                # REPUBLISH events are "same commercial contract, fresh ΑΔΑΜ"
+                # — logged for audit trail but NOT actionable. Hide from feed.
+                if ev.get("event") == "REPUBLISH":
+                    continue
+                out.append(ev)
     out.sort(key=lambda e: (e.get("date", ""), e.get("event", "")), reverse=True)
     return out
 
@@ -102,7 +107,9 @@ TEMPLATE = r"""<!doctype html>
   .meta{font-size:12.5px;color:var(--muted);margin-top:5px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
   .verify{color:var(--link-ink);text-decoration:none;font-weight:600}
   .verify:hover{text-decoration:underline}
-  .date{font-size:12px;color:var(--muted);white-space:nowrap;margin-top:3px}
+  .date{font-size:12px;color:var(--muted);white-space:nowrap;margin-top:3px;text-align:right}
+  .date-abs{font-weight:700;color:var(--text);font-size:12.5px}
+  .date-ago{font-size:11.5px;color:var(--muted);margin-top:2px}
   .empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:14px}
   .empty b{color:var(--text)}
   .foot{max-width:880px;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
@@ -185,14 +192,15 @@ function render(){
   rows.slice(0,500).forEach(e=>{
     const el=document.createElement('div'); el.className='row';
     const d=daysAgo(e.date);
-    const ago=d===0?'σήμερα':(d===1?'χθες':'πριν '+d+' ημ.');
+    const ago = d===0 ? 'σήμερα' : (d===1 ? 'χθες' : 'πριν '+d+' ημ.');
     el.innerHTML='<span class="badge '+e.event+'">'+(LABEL[e.event]||e.event)+'</span>'+
       '<div class="body"><div class="org">'+(e.org||'—')+'</div>'+
       '<div class="svc">'+(e.service||'')+'</div>'+
       (e.holder?'<div class="detail">Ανάδοχος: <b>'+e.holder+'</b>'+(e.value?' · '+money(e.value):'')+'</div>':'')+
       '<div class="meta">'+(e.signed?'υπογραφή '+dmy(e.signed):'')+(e.end?' · λήγει '+dmy(e.end):'')+
       (e.adam?' <a class="verify" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+e.adam+'">Άνοιγμα σύμβασης ↗</a>':'')+'</div></div>'+
-      '<div class="date">'+ago+'</div>';
+      '<div class="date"><div class="date-abs">'+dmy(e.date)+'</div>'+
+      '<div class="date-ago">καταγράφηκε '+ago+'</div></div>';
     listEl.appendChild(el);
   });
   emptyEl.style.display=rows.length?'none':'block';
