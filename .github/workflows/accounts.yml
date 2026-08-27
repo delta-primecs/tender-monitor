@@ -2,7 +2,8 @@ name: Build Account Map
 
 on:
   schedule:
-    - cron: "43 3 * * *"
+    # Staggered away from the other workflows and off the busy top-of-hour slots.
+    - cron: "43 4,17 * * *"   # ~30 min after ingest — heavy, reads live API
   workflow_dispatch:
 
 permissions:
@@ -30,27 +31,7 @@ jobs:
         run: |
           git config user.name "tender-bot"
           git config user.email "tender-bot@users.noreply.github.com"
-
-          if [ ! -f docs/accounts.html ]; then
-            echo "No page was produced — nothing to publish."
-            exit 1
-          fi
-
           git add docs/accounts.html
-          if git diff --staged --quiet; then
-            echo "Page unchanged — nothing to commit."
-            exit 0
-          fi
-          git commit -m "Update account map"
-
-          for i in 1 2 3; do
-            if git pull --rebase origin main && git push; then
-              echo "Published on attempt $i."
-              exit 0
-            fi
-            echo "Push attempt $i failed — retrying in 10s."
-            sleep 10
-          done
-
-          echo "Could not publish after 3 attempts."
-          exit 1
+          git commit -m "Update account map" || echo "No changes"
+          git pull --rebase origin main || true
+          git push

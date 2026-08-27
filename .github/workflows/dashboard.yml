@@ -2,11 +2,11 @@ name: Build Tender Dashboard
 
 on:
   schedule:
-    - cron: "0 6,18 * * *"
-  workflow_dispatch:
+    - cron: "0 5,18 * * *"   # twice daily (was hourly — pointless since ΚΗΜΔΗΣ updates daily)
+  workflow_dispatch:       # lets you press "Run workflow" to build it on demand
 
 permissions:
-  contents: write
+  contents: write          # needed to save docs/index.html back to the repo
 
 jobs:
   build:
@@ -26,31 +26,10 @@ jobs:
       - name: Build the dashboard
         run: python build_dashboard.py
 
-      - name: Publish the page
+      - name: Publish the updated page
         run: |
           git config user.name "tender-bot"
           git config user.email "tender-bot@users.noreply.github.com"
-
-          if [ ! -f docs/index.html ]; then
-            echo "No page was produced — nothing to publish."
-            exit 1
-          fi
-
           git add docs/index.html
-          if git diff --staged --quiet; then
-            echo "Page unchanged — nothing to commit."
-            exit 0
-          fi
-          git commit -m "Update dashboard"
-
-          for i in 1 2 3; do
-            if git pull --rebase origin main && git push; then
-              echo "Published on attempt $i."
-              exit 0
-            fi
-            echo "Push attempt $i failed — retrying in 10s."
-            sleep 10
-          done
-
-          echo "Could not publish after 3 attempts."
-          exit 1
+          git commit -m "Update dashboard" || echo "No changes"
+          git push

@@ -2,7 +2,7 @@ name: Build Contractors
 
 on:
   schedule:
-    - cron: "33 4,16 * * *"   # ~20 min after ingest, so the store is fresh
+    - cron: "33 4,17 * * *"   # ~20 min after ingest, so the store is fresh
   workflow_dispatch:
 
 permissions:

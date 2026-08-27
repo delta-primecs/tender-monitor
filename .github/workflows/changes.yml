@@ -2,7 +2,7 @@ name: Build Changes Feed
 
 on:
   schedule:
-    - cron: "31 4,16 * * *"   # ~20 min after the ingester, so the log is fresh
+    - cron: "31 4,17 * * *"   # ~20 min after ingest, so the log is fresh
   workflow_dispatch:
 
 permissions:

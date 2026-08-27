@@ -2,7 +2,7 @@ name: Build Expiry Radar
 
 on:
   schedule:
-    - cron: "17 4,16 * * *"   # once a day (ΚΗΜΔΗΣ contracts refresh daily)
+    - cron: "17 5,18 * * *"   # twice daily — needs its own window (slow)
   workflow_dispatch:
 
 permissions:
@@ -30,7 +30,29 @@ jobs:
         run: |
           git config user.name "tender-bot"
           git config user.email "tender-bot@users.noreply.github.com"
+
+          if [ ! -f docs/expiry.html ]; then
+            echo "No page was produced — nothing to publish."
+            exit 1
+          fi
+
           git add docs/expiry.html
-          git commit -m "Update expiry radar" || echo "No changes"
-          git pull --rebase origin main || true
-          git push
+          if git diff --staged --quiet; then
+            echo "Page unchanged — nothing to commit."
+            exit 0
+          fi
+          git commit -m "Update expiry radar"
+
+          # Another workflow may have pushed while we were building.
+          # Rebase on top of whatever landed, then push. Retry a few times.
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "Published on attempt $i."
+              exit 0
+            fi
+            echo "Push attempt $i failed — retrying in 10s."
+            sleep 10
+          done
+
+          echo "Could not publish after 3 attempts."
+          exit 1

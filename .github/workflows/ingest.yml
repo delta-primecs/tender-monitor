@@ -2,7 +2,7 @@ name: Ingest Contracts
 
 on:
   schedule:
-    - cron: "11 4,16 * * *"   # twice daily, off the busy slots
+    - cron: "11 4,17 * * *"   # twice daily (07:11 & 20:11 Athens) — everything reads from this
   workflow_dispatch:
 
 permissions:
