@@ -147,6 +147,7 @@ TEMPLATE = r"""<!doctype html>
   <div class="controls">
     <div class="search"><input id="q" type="search" placeholder="Ανάδοχος — π.χ. EMERA, LEVER, AUDIT REVIEW…" autofocus></div>
     <button id="dl" class="btn" disabled>Download CSV</button>
+    <button id="dl90" class="btn" title="Κατέβασε λίστα με όλες τις συμβάσεις που λήγουν στις επόμενες 90 ημέρες — hit list για τηλεφωνήματα">⬇ Λήξεις 90 ημ.</button>
   </div>
   <section id="profile" class="profile" style="display:none">
     <div class="profile-head">
@@ -362,6 +363,51 @@ dl.addEventListener('click', ()=>{
   const name = (qEl.value.trim() || 'contractors').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(0,60);
   a.href = URL.createObjectURL(blob);
   a.download = 'contractors_'+name+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+});
+
+// Hit-list export: ALL contracts across ALL contractors expiring in the next
+// 90 days, regardless of what's in the search box. This is the "who's ripe
+// to displace" list — one row per contract, sorted by soonest end date.
+document.getElementById('dl90').addEventListener('click', ()=>{
+  // Compute +90 day window (today inclusive → today+90 inclusive)
+  const today = TODAY;
+  const in90 = (()=>{ const d=new Date(); d.setDate(d.getDate()+90); return d.toISOString().slice(0,10); })();
+  // Filter: end date exists, is today or later, and within window.
+  // Apply the same dedup pass we use elsewhere so republications don't inflate.
+  const all = dedupRepublications(ROWS.filter(r =>
+    r.end && r.end >= today && r.end <= in90
+  ));
+  if(!all.length){
+    alert('Καμία σύμβαση δεν λήγει στις επόμενες 90 ημέρες.');
+    return;
+  }
+  // Soonest expiring at the top — that's the call order
+  all.sort((a,b)=>(a.end||'').localeCompare(b.end||''));
+  // Compute days-until-end for the sales team's convenience
+  const daysUntil = (endStr)=>{
+    const [y,m,d]=endStr.split('-').map(Number);
+    const end=new Date(Date.UTC(y,m-1,d));
+    const now=new Date(TODAY);
+    return Math.round((end - now)/86400000);
+  };
+  const header = ['Λήγει σε (ημ.)','Λήγει','Ανάδοχος','Οργανισμός','Περιοχή','Υπηρεσία','Αξία (€)','Υπογραφή','ΑΔΑΜ','Σύμβαση'];
+  const lines = [header.join(';')];
+  all.forEach(r=>{
+    lines.push([
+      daysUntil(r.end),
+      dmy(r.end),
+      r.holder, r.org, r.region, r.service, r.value,
+      dmy(r.signed), r.adam,
+      r.adam ? 'https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+r.adam : ''
+    ].map(csvField).join(';'));
+  });
+  const blob = new Blob(['\ufeff'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  // filename includes today's date for versioning
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hitlist_lixeis_90d_'+today+'.csv';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
 });
