@@ -138,6 +138,96 @@ def is_amendment(subject):
     return any(k in s for k in AMENDMENT_KEYWORDS)
 
 
+# ── Subject-vs-service check ──────────────────────────────────────────────
+# The CPV alone can mislabel a contract (e.g. software-for-surgeries tagged as
+# Internal Audit). When we have the contract title (subject), we cross-check it
+# against the tagged service and annotate — WITHOUT deleting or changing the
+# service. Readers show a badge so the user verifies before acting.
+#
+# Result stored on each record as `subject_check`:
+#   "confirmed"  — subject contains a word that CONFIRMS the tagged service
+#   "mismatch"   — subject contains a word that CONTRADICTS it (likely wrong CPV)
+#   "unverified" — no positive and no negative signal (or no subject yet)
+
+POSITIVE_KEYWORDS = {
+    "Εσωτερικός έλεγχος": [
+        "εσωτερικ", "ενδογεν", "δικλίδ", "δικλειδ", "μεε ", " μεε",
+        "μονάδα ελέγχου", "μοναδα ελεγχου", "μονάδας ελέγχου", "μοναδας ελεγχου",
+        "ν.4795", "ν. 4795", "4795/2021", "4795/21",
+        "internal audit", "internal control",
+    ],
+    "Διαχείριση κινδύνων": [
+        "κινδύν", "κινδυν", "μητρώο κινδ", "μητρωο κινδ",
+        "ν.5013", "ν. 5013", "5013/2023", "5013/23",
+        "risk management", "risk assessment", "διαχείριση κιν", "διαχειριση κιν",
+    ],
+    "Χαρτογράφηση / Οργάνωση": [
+        "χαρτογράφ", "χαρτογραφ", "διαδικασ", "οργανωτικ", "οργάνωσ", "οργανωσ",
+        "καταγραφή διαδ", "καταγραφη διαδ",
+    ],
+    "Οικονομικός έλεγχος / Ορκωτοί": [
+        "οικονομικ έλεγχ", "οικονομικ ελεγχ", "ορκωτ", "χρηματοοικονομικ έλεγχ",
+        "financial audit", "statutory audit", "ελεγκτικές υπηρεσίες",
+        "ελεγκτικες υπηρεσιες", "ελεγκτ", "λογιστ",
+    ],
+    "DPO / Προστασία δεδομένων": [
+        "dpo", "προστασία δεδομ", "προστασια δεδομ", "γκπδ", "gdpr",
+        "προστασ προσωπικ", "υπεύθυν προστασ", "υπευθυν προστασ",
+    ],
+    "Συμμόρφωση / Whistleblowing": [
+        "συμμόρφωσ", "συμμορφωσ", "καταγγελ", "whistleblow",
+        "ν.4990", "ν. 4990", "4990/2022", "δίαυλοι", "διαυλοι",
+    ],
+    "Λογιστικές υπηρεσίες": [
+        "λογιστ", "τήρηση βιβλί", "τηρηση βιβλι", "λογιστήρι", "λογιστηρι",
+    ],
+    "Φορολογικές υπηρεσίες": [
+        "φορολογ", "φπα", "φ.π.α", "μισθοδοσ",
+    ],
+    "Επιχειρηματική / οικονομική συμβουλευτική": [
+        "επιχειρηματικ σχ", "στρατηγικ", "επιχειρησιακ σχ",
+        "business plan", "financial advis",
+    ],
+}
+
+# Negative keywords: if the subject is clearly about something unrelated
+# (IT, vehicles, construction, events, medical), the service tag is suspect.
+# NOTE: "καθαρισμ"/"καθαριστ" intentionally NOT included — they false-match
+# "εκκαθαριστής" (liquidator), a legitimate accounting role. Left out on purpose.
+NEGATIVE_KEYWORDS = [
+    # IT / software / hardware
+    "λογισμικ", "software", "hardware", "εφαρμογ πληροφορικ",
+    "πληροφοριακό σύστημα", "πληροφοριακο συστημα", "μηχανογραφ",
+    # Vehicles / fuel / transport of goods
+    "οχήματ", "οχηματ", "καύσιμ", "καυσιμ", "στόλου οχ", "στολου οχ",
+    # Medical / clinical / surgical
+    "χειρουργεί", "χειρουργει", "νοσηλευτικ", "εμβολιασμ",
+    # Construction / civil works
+    "κατασκευ", "ανακαίν", "ανακαιν", "οδοποιί", "οδοποιι", "φράγμα", "φραγμα",
+    # Events / marketing
+    "διαφήμισ", "διαφημισ", "εκδήλωσ", "εκδηλωσ", "εγκαινί", "εγκαινι",
+    # Building maintenance (specific, to avoid catching "συντήρηση λογισμικού"→already caught)
+    "συντήρησ κτιρι", "συντηρησ κτιρι",
+]
+
+
+def subject_check(subject, service):
+    """Classify subject vs tagged service. Non-destructive annotation only."""
+    if not subject:
+        return "unverified"
+    s = subject.lower()
+    s = " ".join(s.split())
+    # Negative signal wins — strongest indication the CPV mislabeled it
+    for kw in NEGATIVE_KEYWORDS:
+        if kw in s:
+            return "mismatch"
+    # Positive signal confirms
+    for kw in POSITIVE_KEYWORDS.get(service, []):
+        if kw in s:
+            return "confirmed"
+    return "unverified"
+
+
 def parse(c):
     det = c.get("contractingDataDetails") or {}
     members = det.get("contractingMembersDataList") or []
@@ -167,6 +257,7 @@ def parse(c):
                            (c.get("contractDurationUnitOfMeasure") or {}).get("key")),
         "subject": subject,
         "amendment": is_amendment(subject),
+        "subject_check": subject_check(subject, service),
     }
 
 
@@ -201,6 +292,17 @@ def log_changes(events):
 def main():
     store = load_store()
     first_run = len(store) == 0
+
+    # One-time sweep: records filled by the earlier subject-backfill have a
+    # `subject` but no `subject_check` yet. Compute it now. Idempotent — records
+    # that already have the check are skipped.
+    swept = 0
+    for rec in store.values():
+        if rec.get("subject") and "subject_check" not in rec:
+            rec["subject_check"] = subject_check(rec["subject"], rec.get("service"))
+            swept += 1
+    if swept:
+        print(f"Subject-check sweep: annotated {swept} previously-backfilled records")
     today = date.today().isoformat()
 
     # what does each org already hold per service? (to spot renewals)
@@ -276,7 +378,8 @@ def main():
                 # Enrich existing records with new fields (subject / amendment)
                 # if they lack them — one-time backfill via the incremental window.
                 if "subject" not in old and p.get("subject"):
-                    old = {**old, "subject": p["subject"], "amendment": p["amendment"]}
+                    old = {**old, "subject": p["subject"], "amendment": p["amendment"],
+                           "subject_check": p.get("subject_check", "unverified")}
                     changed = True
                 if old.get("end") != p["end"] or old.get("value") != p["value"]:
                     old = {**old, "end": p["end"], "value": p["value"]}
@@ -334,6 +437,8 @@ def main():
                                "adam": adam, "org": p["org"], "service": p["service"],
                                "holder": p["holder"], "value": p["value"],
                                "signed": p["signed"], "end": p["end"],
+                               "subject": p.get("subject"),
+                               "subject_check": p.get("subject_check", "unverified"),
                                "detail": (f"replaces prior signed {latest.get(k)}"
                                           if had_before else "first contract seen")})
             if p.get("signed", "") > latest.get(k, ""):

@@ -38,6 +38,7 @@ def load_store():
                     "adam": r.get("adam"),
                     "amendment": bool(r.get("amendment")),
                     "subject": r.get("subject") or "",
+                    "subject_check": r.get("subject_check") or "unverified",
                 })
     # newest first
     rows.sort(key=lambda x: x.get("signed") or "", reverse=True)
@@ -119,6 +120,9 @@ TEMPLATE = r"""<!doctype html>
   .org{color:var(--text)}
   .service{font-size:11.5px;font-weight:600;color:var(--tag);background:var(--tag-bg);border-radius:5px;padding:2px 8px;white-space:nowrap}
   .tag-amend{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#8a5a11;background:#f6ecd2;border-radius:5px;padding:2px 8px;white-space:nowrap;cursor:help}
+  .tag-chk{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 8px;white-space:nowrap;cursor:help}
+  .tag-bad{color:#8a1a10;background:#f4d0cb}
+  .tag-warn{color:#8a5a11;background:#f6ecd2}
   tr.is-amend td{background:#fdfbf3}
   .value{font-family:'Commissioner',sans-serif;font-weight:700;color:var(--gold);white-space:nowrap}
   .date{color:var(--muted);white-space:nowrap}
@@ -238,10 +242,16 @@ function rowHTML(r){
   const amend = r.amendment
     ? '<span class="tag-amend" title="'+(r.subject||'').replace(/"/g,'&quot;')+'">ΠΑΡΑΤΑΣΗ / ΤΡΟΠΟΠΟΙΗΣΗ</span>'
     : '';
+  const sc = r.subject_check || 'unverified';
+  const chk = sc==='mismatch'
+    ? '<span class="tag-chk tag-bad" title="'+(r.subject||'').replace(/"/g,'&quot;')+'">⚠ τίτλος αντίθετος</span>'
+    : (sc==='unverified'
+        ? '<span class="tag-chk tag-warn" title="Ο τίτλος δεν επιβεβαιώνει την υπηρεσία — έλεγξε τη σύμβαση">⚠ προς επιβεβαίωση</span>'
+        : '');
   return '<tr'+(r.amendment?' class="is-amend"':'')+'>'+
     '<td class="holder">'+(r.holder||'')+'</td>'+
     '<td class="org">'+(r.org||'')+(r.region?' <span class="date">· '+r.region+'</span>':'')+'</td>'+
-    '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+amend+'</td>'+
+    '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+amend+chk+'</td>'+
     '<td class="value">'+money(r.value)+'</td>'+
     '<td class="date">'+dmy(r.signed)+'</td>'+
     '<td class="date">'+dmy(r.end)+'</td>'+
