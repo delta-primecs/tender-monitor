@@ -1,0 +1,28 @@
+name: Diagnose Tagging (read-only)
+
+# Manual only. Runs diagnose_chain.py and prints the classification report
+# to the Actions log. This job NEVER writes to the repo — it's pure analysis.
+# Read the output under the "Run diagnostic" step when the run finishes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run diagnostic
+        run: python diagnose_chain.py
