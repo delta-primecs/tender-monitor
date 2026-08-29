@@ -39,6 +39,9 @@
   .row{padding:14px 18px;border-top:1px solid var(--hair);display:flex;gap:12px;align-items:flex-start}
   .row:first-child{border-top:0}
   .badge{font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;white-space:nowrap;margin-top:2px}
+  .chk{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px;white-space:nowrap;cursor:help;vertical-align:middle}
+  .chk-bad{background:#f4d0cb;color:#8a1a10}
+  .chk-warn{background:#f6ecd2;color:#8a5a11}
   .badge.RENEWAL{background:var(--renew-bg);color:var(--renew)}
   .badge.NEW{background:var(--new-bg);color:var(--new)}
   .badge.UPDATED{background:var(--upd-bg);color:var(--upd)}
@@ -70,7 +73,7 @@
     <div class="readout">
       <div class="stat"><div class="n" id="s-all">0</div><div class="l">Events</div></div>
       <div class="stat"><div class="n hot" id="s-renew">0</div><div class="l">Renewals</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">29/08/2026 14:16</div><div class="l">Updated</div></div>
+      <div class="stat"><div class="n" style="font-size:15px">29/08/2026 15:45</div><div class="l">Updated</div></div>
     </div>
   </header>
   <div class="controls">
@@ -136,9 +139,15 @@ function render(){
     const el=document.createElement('div'); el.className='row';
     const d=daysAgo(e.date);
     const ago = d===0 ? 'σήμερα' : (d===1 ? 'χθες' : 'πριν '+d+' ημ.');
+    const sc = e.subject_check || 'unverified';
+    const scBadge = sc==='mismatch'
+      ? '<span class="chk chk-bad" title="'+((e.subject||'').replace(/"/g,'&quot;'))+'">⚠ τίτλος αντίθετος</span>'
+      : (sc==='unverified'
+          ? '<span class="chk chk-warn" title="Ο τίτλος δεν επιβεβαιώνει την υπηρεσία — έλεγξε τη σύμβαση πριν καλέσεις">⚠ προς επιβεβαίωση</span>'
+          : '');
     el.innerHTML='<span class="badge '+e.event+'">'+(LABEL[e.event]||e.event)+'</span>'+
       '<div class="body"><div class="org">'+(e.org||'—')+'</div>'+
-      '<div class="svc">'+(e.service||'')+'</div>'+
+      '<div class="svc">'+(e.service||'')+scBadge+'</div>'+
       (e.holder?'<div class="detail">Ανάδοχος: <b>'+e.holder+'</b>'+(e.value?' · '+money(e.value):'')+'</div>':'')+
       '<div class="meta">'+(e.signed?'υπογραφή '+dmy(e.signed):'')+(e.end?' · λήγει '+dmy(e.end):'')+
       (e.adam?' <a class="verify" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+e.adam+'">Άνοιγμα σύμβασης ↗</a>':'')+'</div></div>'+
