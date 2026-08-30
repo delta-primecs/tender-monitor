@@ -1,0 +1,60 @@
+name: Battlecard (ad-hoc)
+
+# Give it an ΑΔΑΜ, it produces a sales battlecard for that contract:
+# object, deliverables, amounts, and attack points (what the incumbent
+# is NOT covering — your differentiation angle).
+#
+# Result is committed to docs/battlecards/<ADAM>.html and viewable at
+# https://delta-primecs.github.io/tender-monitor/battlecards/<ADAM>.html
+on:
+  workflow_dispatch:
+    inputs:
+      adam:
+        description: "ΑΔΑΜ της σύμβασης (π.χ. 25SYMV018273925)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  battlecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install OCR tools (tesseract + Greek, poppler)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ell poppler-utils
+
+      - name: Install Python dependencies
+        run: pip install requests pdfplumber pytesseract pdf2image
+
+      - name: Generate battlecard
+        run: python battlecard.py "${{ github.event.inputs.adam }}"
+
+      - name: Publish battlecard
+        run: |
+          git config user.name "tender-bot"
+          git config user.email "tender-bot@users.noreply.github.com"
+          git add docs/battlecards/
+          if git diff --staged --quiet; then
+            echo "No battlecard produced (download or parse failed?)."
+            exit 1
+          fi
+          git commit -m "Battlecard ${{ github.event.inputs.adam }}"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "Published on attempt $i."; exit 0
+            fi
+            echo "Attempt $i failed — retrying."; sleep 10
+          done
+          exit 1
