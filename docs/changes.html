@@ -33,7 +33,7 @@
        line-height:1.45;padding:14px 12px 40px;-webkit-font-smoothing:antialiased;
        font-size:13px}
   .wrap{max-width:1100px;margin:0 auto}
-  .nav{max-width:1100px;margin:0 auto 8px;display:flex;gap:2px;font-size:12px;flex-wrap:wrap}
+  .nav{max-width:1600px;margin:0 auto 8px;display:flex;gap:2px;font-size:12px;flex-wrap:wrap}
   .nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);
          background:var(--panel);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
   .nav a:hover{color:var(--text);border-color:var(--hair-2)}
@@ -102,8 +102,39 @@
   .date-ago{font-size:10px;color:var(--muted);margin-top:2px}
   .empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:13px}
   .empty b{color:var(--bright)}
-  .foot{max-width:1100px;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
+  .foot{max-width:1600px;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
   .foot b{color:var(--text)}
+
+  /* Split-view */
+  .wrap{max-width:1600px}
+  .split{display:flex;gap:2px;align-items:flex-start}
+  .left{flex:1 1 46%;min-width:0}
+  .right{flex:1 1 54%;position:sticky;top:12px;height:calc(100vh - 24px);
+         background:var(--panel);border:1px solid var(--hair);border-top:0;
+         display:flex;flex-direction:column;overflow:hidden}
+  .row{cursor:pointer}
+  .row.sel{background:var(--accent-dim) !important;box-shadow:inset 3px 0 0 var(--accent)}
+  .detail-empty{margin:auto;text-align:center;color:var(--muted);font-size:13px;padding:40px}
+  .de-icon{font-size:40px;color:var(--hair2);margin-bottom:14px}
+  .detail-head{display:flex;align-items:center;gap:12px;padding:10px 14px;
+       border-bottom:1px solid var(--hair);background:#0c1219}
+  .dh-adam{color:var(--accent);font-weight:700;font-size:12px;letter-spacing:.04em}
+  .dh-close{margin-left:auto;color:var(--muted);cursor:pointer;text-decoration:none;font-size:14px}
+  .dh-close:hover{color:var(--red)}
+  #detail-frame{flex:1;width:100%;border:0;background:var(--page)}
+  .detail-missing{margin:auto;text-align:center;padding:40px 30px;max-width:420px}
+  .dm-title{color:var(--amber);font-size:14px;font-weight:700;margin-bottom:10px}
+  .dm-sub{color:var(--muted);font-size:12px;line-height:1.6;margin-bottom:20px}
+  .dm-btn{display:inline-block;background:var(--accent-dim);color:var(--accent);
+       border:1px solid var(--accent);padding:10px 18px;text-decoration:none;
+       font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  .dm-btn:hover{background:var(--accent);color:var(--page)}
+  .dm-alt{display:block;margin-top:16px;color:var(--link);font-size:11px;text-decoration:none}
+  .dm-alt:hover{text-decoration:underline}
+  @media(max-width:900px){
+    .split{flex-direction:column}
+    .right{position:static;width:100%;height:70vh;border-top:1px solid var(--hair)}
+  }
 </style>
 </head>
 <body>
@@ -117,7 +148,7 @@
     <div class="readout">
       <div class="stat"><div class="n" id="s-all">0</div><div class="l">Events</div></div>
       <div class="stat"><div class="n hot" id="s-renew">0</div><div class="l">Renewals</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">31/08/2026 10:30</div><div class="l">Updated</div></div>
+      <div class="stat"><div class="n" style="font-size:15px">31/08/2026 10:59</div><div class="l">Updated</div></div>
     </div>
   </header>
   <div class="controls">
@@ -138,8 +169,29 @@
       </div>
     </div>
   </div>
-  <main class="list" id="list"></main>
-  <div class="empty" id="empty" style="display:none"></div>
+  <div class="split">
+    <div class="left">
+      <main class="list" id="list"></main>
+      <div class="empty" id="empty" style="display:none"></div>
+    </div>
+    <div class="right" id="detail">
+      <div class="detail-empty" id="detail-empty">
+        <div class="de-icon">◧</div>
+        <div>Διάλεξε μια σύμβαση αριστερά<br>για να δεις το πλήρες κείμενο εδώ.</div>
+      </div>
+      <div class="detail-head" id="detail-head" style="display:none">
+        <span class="dh-adam" id="dh-adam"></span>
+        <a class="dh-close" id="dh-close" title="Κλείσιμο">✕</a>
+      </div>
+      <iframe id="detail-frame" style="display:none"></iframe>
+      <div class="detail-missing" id="detail-missing" style="display:none">
+        <div class="dm-title">Το πλήρες κείμενο δεν έχει δημιουργηθεί ακόμα</div>
+        <div class="dm-sub">Τρέξε το Contract Reader για αυτό το ΑΔΑΜ (μία φορά), και μετά θα ανοίγει εδώ αμέσως.</div>
+        <a class="dm-btn" id="dm-btn" target="_blank" rel="noopener">▶ Δημιουργία κειμένου</a>
+        <a class="dm-alt" id="dm-alt" target="_blank" rel="noopener">ή άνοιξε το πρωτότυπο PDF ↗</a>
+      </div>
+    </div>
+  </div>
 </div>
 <p class="foot">
   Τροφοδοτείται από τη μνήμη του συστήματος (<b>data/changes.jsonl</b>). Η ροή <b>ξεκινά άδεια</b> και γεμίζει καθώς εμφανίζονται πραγματικές αλλαγές — μία <b>ΑΝΑΝΕΩΣΗ</b> σημαίνει ότι ο φορέας ξαναϋπέγραψε (δεν είναι πια ευκαιρία).
@@ -150,6 +202,59 @@ const EV = [{"date": "2026-08-29", "event": "RENEWAL", "adam": "26SYMV019692939"
 const TODAY = new Date().toISOString().slice(0,10), DAY=86400000;
 let evFilter='all', svcFilter='all', win=0;
 const listEl=document.getElementById('list'), emptyEl=document.getElementById('empty'), qEl=document.getElementById('q');
+
+// ── Split-view detail pane ────────────────────────────────────────────────
+const REPO_ACTIONS = "https://github.com/delta-primecs/tender-monitor/actions/workflows/contract_reader.yml";
+const CONTRACT_BASE = "contracts/";  // relative to this page on GitHub Pages
+const KHMDHS_PDF = "https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/";
+let selectedRow=null;
+
+function openDetail(e, rowEl){
+  // highlight
+  if(selectedRow) selectedRow.classList.remove('sel');
+  rowEl.classList.add('sel'); selectedRow=rowEl;
+
+  const adam=e.adam;
+  const deEmpty=document.getElementById('detail-empty');
+  const deHead=document.getElementById('detail-head');
+  const deFrame=document.getElementById('detail-frame');
+  const deMiss=document.getElementById('detail-missing');
+  deEmpty.style.display='none';
+
+  const url=CONTRACT_BASE+adam+'.html';
+  // Check if the pre-generated contract text exists
+  fetch(url, {method:'HEAD'}).then(r=>{
+    if(r.ok){
+      // exists → load in iframe
+      deHead.style.display='flex';
+      document.getElementById('dh-adam').textContent=adam;
+      deFrame.style.display='block';
+      deMiss.style.display='none';
+      deFrame.src=url;
+    } else {
+      showMissing(adam);
+    }
+  }).catch(()=>showMissing(adam));
+
+  function showMissing(adam){
+    deHead.style.display='flex';
+    document.getElementById('dh-adam').textContent=adam;
+    deFrame.style.display='none';
+    deMiss.style.display='flex';
+    deMiss.style.flexDirection='column';
+    document.getElementById('dm-btn').href=REPO_ACTIONS;
+    document.getElementById('dm-alt').href=KHMDHS_PDF+adam;
+  }
+}
+
+document.getElementById('dh-close').addEventListener('click', ()=>{
+  document.getElementById('detail-head').style.display='none';
+  document.getElementById('detail-frame').style.display='none';
+  document.getElementById('detail-missing').style.display='none';
+  document.getElementById('detail-empty').style.display='flex';
+  if(selectedRow){selectedRow.classList.remove('sel');selectedRow=null;}
+});
+
 const money=n=>n?new Intl.NumberFormat('el-GR',{maximumFractionDigits:0}).format(n)+' €':'';
 const dmy=s=>s?s.split('-').reverse().join('/'):'—';
 const daysAgo=s=>s?Math.round((new Date(TODAY)-new Date(s))/DAY):null;
@@ -194,9 +299,12 @@ function render(){
       '<div class="svc">'+(e.service||'')+scBadge+'</div>'+
       (e.holder?'<div class="detail">Ανάδοχος: <b>'+e.holder+'</b>'+(e.value?' · '+money(e.value):'')+'</div>':'')+
       '<div class="meta">'+(e.signed?'υπογραφή '+dmy(e.signed):'')+(e.end?' · λήγει '+dmy(e.end):'')+
-      (e.adam?' <a class="verify" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+e.adam+'">Άνοιγμα σύμβασης ↗</a>':'')+'</div></div>'+
+      (e.adam?' <span class="verify">Άνοιγμα κειμένου →</span>':'')+'</div></div>'+
       '<div class="date"><div class="date-abs">'+dmy(e.date)+'</div>'+
       '<div class="date-ago">καταγράφηκε '+ago+'</div></div>';
+    if(e.adam){
+      el.addEventListener('click', ()=>openDetail(e, el));
+    }
     listEl.appendChild(el);
   });
   emptyEl.style.display=rows.length?'none':'block';
