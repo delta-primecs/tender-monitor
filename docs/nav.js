@@ -39,7 +39,7 @@
       '<span class="tc-prompt">&gt;</span>' +
       '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
       'placeholder="Εντολή ή αναζήτηση — π.χ. CON, ACC, ή όνομα φορέα/αναδόχου…">' +
-      '<span class="tc-hint">εντολές: OPEN · EXP · ACC · CHG · REG · CON · NEWS</span>' +
+      '<span class="tc-hint">` για άνοιγμα · εντολές: OPEN · EXP · ACC · CHG · REG · CON · NEWS</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
     nav.parentNode.insertBefore(bar, nav);
@@ -226,6 +226,7 @@
     el.innerHTML =
       '<div class="kbbox"><div class="kbtitle">Συντομεύσεις πληκτρολογίου</div>' +
       '<table>' + rows +
+      '<tr><td class="k">`</td><td>Άνοιγμα γραμμής εντολών (από παντού)</td></tr>' +
       '<tr><td class="k">/</td><td>Εστίαση στην αναζήτηση</td></tr>' +
       '<tr><td class="k">:</td><td>Γραμμή εντολών (tab ή αναζήτηση)</td></tr>' +
       '<tr><td class="k">g</td><td>Γραμμή εντολών (ίδιο με :)</td></tr>' +
@@ -247,6 +248,17 @@
   }
 
   function onKey(e) {
+    // Backtick (`) — focus the command bar from ANYWHERE, Gödel-style.
+    // Fires even from inside a search box; the char is never inserted.
+    if (e.key === "`" || e.code === "Backquote") {
+      const tc = document.getElementById("tcinput");
+      if (tc) {
+        e.preventDefault();
+        tc.focus(); tc.select();
+        renderTopSuggestions(tc.value.trim());
+      }
+      return;
+    }
     const cmdOpen = document.getElementById("cmdbar")?.classList.contains("show");
     if (cmdOpen) return;
     if (isTyping(e)) {
