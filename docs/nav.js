@@ -19,11 +19,12 @@
     // Inject the permanent command bar ABOVE the nav, once.
     ensureTopCmd();
     const cur = here();
-    slot.className = "nav";
-    slot.innerHTML = TABS.map(t => {
-      const on = t.href.toLowerCase() === cur ? ' class="on"' : "";
-      return `<a href="${t.href}"${on}><span class="kbd">${t.key}</span>${t.label}</a>`;
-    }).join("") + `<span class="nav-hint">? για βοήθεια</span>`;
+    const active = TABS.find(t => t.href.toLowerCase() === cur) || TABS[0];
+    // Slim location indicator — the command bar is the navigator now.
+    slot.className = "nav navslim";
+    slot.innerHTML =
+      `<span class="nav-here"><span class="kbd">${active.key}</span>${active.label}</span>` +
+      `<span class="nav-hint">πληκτρολόγησε παραπάνω για μετάβαση · ? για βοήθεια</span>`;
   }
 
   // ── Permanent top command bar (always visible, like Gödel) ───────────────
