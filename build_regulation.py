@@ -20,19 +20,21 @@ import requests
 BASE = "https://diavgeia.gov.gr/luminapi/opendata"
 OUT = "docs/regulation.html"
 
-# The bodies to watch. IDs resolved from Διαύγεια.
-# NOTE on Ελεγκτικό Συνέδριο: to add it, run resolve_orgs.py locally with
-# TARGETS = ["ΕΛΕΓΚΤΙΚΟ"] and paste the ID below (uncomment the line).
+# The bodies to watch. IDs resolved from Διαύγεια, verified against real records.
 ORGS = {
     "100051206": "ΕΑΔ",       # Εθνική Αρχή Διαφάνειας — writes the standards
     "100054492": "ΥΠΕΣ",      # Υπουργείο Εσωτερικών — the starting-gun circulars
-    # "TODO_ID": "Ελ.Συν.",   # Ελεγκτικό Συνέδριο — add when resolved
+    "14065":     "Ελ.Συν.",   # Ελεγκτικό Συνέδριο — court decisions & procurement
 }
 
 # Bodies whose ENTIRE output is by mandate relevant to your services.
 # For these we skip topic-filtering — trust the body, don't second-guess.
 # ΕΑΔ is *the* authority for internal audit & integrity in Greek public sector,
 # so filtering its output was silently dropping the most important source.
+# NOTE: Ελ.Συν. is DELIBERATELY not here. Its Διαύγεια feed is mostly
+# administrative housekeeping (travel, payments, procurement); its actual
+# audit πορίσματα on Δήμοι live on elsyn.gr and need a separate scraper.
+# The topic filter keeps this feed clean without silencing the source.
 TRUST_ORGS = {"ΕΑΔ"}
 
 # Regulatory decision types.
@@ -200,6 +202,7 @@ TEMPLATE = r"""<!doctype html>
 </style>
 </head>
 <body>
+<link rel="stylesheet" href="godel.css">
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
