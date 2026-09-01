@@ -8,6 +8,7 @@
     { key: "4", href: "changes.html",     label: "What changed",     code: "CHG"  },
     { key: "5", href: "regulation.html",  label: "Regulatory radar", code: "REG"  },
     { key: "6", href: "contractors.html", label: "Contractors",      code: "CON"  },
+    { key: "7", href: "news.html",        label: "Νέα",              code: "NEWS" },
   ];
 
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
@@ -29,19 +30,81 @@
     bar.id = "cmdbar";
     bar.innerHTML =
       '<div class="cmdbox">' +
+      '<div class="cmdrow">' +
       '<span class="cmdprompt">&gt;</span>' +
       '<input id="cmdinput" autocomplete="off" spellcheck="false" ' +
       'placeholder="tab (open/exp/acc/chg/reg/con) or search...">' +
-      '<span class="cmdhint">Enter . Esc</span>' +
+      '</div>' +
+      '<div class="cmdlist" id="cmdlist"></div>' +
       '</div>';
     document.body.appendChild(bar);
     const input = document.getElementById("cmdinput");
+    input.addEventListener("input", () => renderSuggestions(input.value.trim()));
     input.addEventListener("keydown", (e) => {
       e.stopPropagation();
       if (e.key === "Escape") { closeCmd(); }
-      else if (e.key === "Enter") { runCmd(input.value.trim()); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); moveSel(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); moveSel(-1); }
+      else if (e.key === "Enter") { runSelected(input.value.trim()); }
     });
     bar.addEventListener("click", (e) => { if (e.target === bar) closeCmd(); });
+  }
+
+  let suggestions = [], selIdx = 0;
+
+  function computeSuggestions(v) {
+    const low = v.toLowerCase();
+    const out = [];
+    // matching tabs first
+    TABS.forEach(t => {
+      if (!low || t.code.toLowerCase().startsWith(low) ||
+          t.label.toLowerCase().includes(low) || t.key === low) {
+        out.push({ type: "tab", label: t.label, code: t.code,
+                   key: t.key, href: t.href });
+      }
+    });
+    // a search action if there's a query that isn't just a tab code
+    if (low) {
+      out.push({ type: "search", label: 'Αναζήτηση: "' + v + '"',
+                 code: "→ Contractors", href: "contractors.html?q=" + encodeURIComponent(v) });
+    }
+    return out;
+  }
+
+  function renderSuggestions(v) {
+    suggestions = computeSuggestions(v);
+    selIdx = 0;
+    const list = document.getElementById("cmdlist");
+    if (!suggestions.length) { list.innerHTML = ""; return; }
+    list.innerHTML = suggestions.map((s, i) =>
+      '<div class="cmditem' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '">' +
+      (s.type === "tab" ? '<span class="ci-key">' + s.key + '</span>' :
+                          '<span class="ci-key ci-search">⌕</span>') +
+      '<span class="ci-label">' + s.label + '</span>' +
+      '<span class="ci-code">' + s.code + '</span>' +
+      '<span class="ci-enter">Enter ⏎</span></div>'
+    ).join("");
+    Array.from(list.querySelectorAll(".cmditem")).forEach(el => {
+      el.addEventListener("click", () => {
+        selIdx = parseInt(el.dataset.i, 10);
+        runSelected(document.getElementById("cmdinput").value.trim());
+      });
+    });
+  }
+
+  function moveSel(d) {
+    if (!suggestions.length) return;
+    selIdx = (selIdx + d + suggestions.length) % suggestions.length;
+    const items = document.querySelectorAll("#cmdlist .cmditem");
+    items.forEach((el, i) => el.classList.toggle("sel", i === selIdx));
+  }
+
+  function runSelected(v) {
+    if (suggestions.length && suggestions[selIdx]) {
+      location.href = suggestions[selIdx].href;
+      return;
+    }
+    runCmd(v);
   }
 
   function openCmd() {
@@ -49,6 +112,7 @@
     document.getElementById("cmdbar").classList.add("show");
     const i = document.getElementById("cmdinput");
     i.value = ""; i.focus();
+    renderSuggestions("");
   }
   function closeCmd() {
     const b = document.getElementById("cmdbar");
