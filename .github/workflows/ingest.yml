@@ -20,8 +20,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install OCR tools (tesseract + Greek, poppler)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ell poppler-utils
+
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests pdfplumber pytesseract pdf2image
 
       - name: Ingest new contracts
         run: python ingest_contracts.py
@@ -30,7 +35,7 @@ jobs:
         run: |
           git config user.name "tender-bot"
           git config user.email "tender-bot@users.noreply.github.com"
-          git add data/
+          git add data/ docs/contracts/
           if git diff --staged --quiet; then
             echo "Nothing new to store."
             exit 0
