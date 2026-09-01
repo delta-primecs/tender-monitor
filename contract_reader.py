@@ -203,36 +203,54 @@ def build_html(adam, sections, ocr_pages, total_chars):
 </div></body></html>"""
 
 
+def generate_for_adam(adam, skip_if_exists=True):
+    """Download + extract + render the full-text page for one ΑΔΑΜ.
+    Returns True if a page now exists, False on failure. Safe to call from
+    the ingester or a backfill loop."""
+    adam = adam.strip()
+    os.makedirs(OUT_DIR, exist_ok=True)
+    out_path = f"{OUT_DIR}/{adam}.html"
+    if skip_if_exists and os.path.exists(out_path):
+        return True
+    pdf_path = f"/tmp/{adam}.pdf"
+    try:
+        download_pdf(adam, pdf_path)
+    except Exception as e:
+        print(f"  [{adam}] download failed: {type(e).__name__}")
+        return False
+    try:
+        pages = extract_text(pdf_path)
+        ocr_pages = [p for p, _, was in pages if was]
+        raw = "\n".join(t for _, t, _ in pages)
+        cleaned = clean_text(raw)
+        sections = split_sections(cleaned)
+        out_html = build_html(adam, sections, ocr_pages, len(cleaned))
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(out_html)
+        return True
+    except Exception as e:
+        print(f"  [{adam}] extract failed: {type(e).__name__}")
+        return False
+    finally:
+        try:
+            os.remove(pdf_path)
+        except Exception:
+            pass
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python contract_reader.py <ADAM>")
         sys.exit(1)
     adam = sys.argv[1].strip()
-    os.makedirs(OUT_DIR, exist_ok=True)
-    pdf_path = f"/tmp/{adam}.pdf"
-
-    print(f"Downloading {adam} …")
-    try:
-        download_pdf(adam, pdf_path)
-    except Exception as e:
-        print(f"Download failed: {type(e).__name__}: {e}")
+    print(f"Generating full text for {adam} …")
+    ok = generate_for_adam(adam, skip_if_exists=False)
+    if ok:
+        print(f"Written: {OUT_DIR}/{adam}.html")
+        print(f"View: https://delta-primecs.github.io/tender-monitor/contracts/{adam}.html")
+    else:
+        print("Failed.")
         sys.exit(1)
-
-    print("Extracting full text …")
-    pages = extract_text(pdf_path)
-    ocr_pages = [p for p, _, was in pages if was]
-    raw = "\n".join(t for _, t, _ in pages)
-    cleaned = clean_text(raw)
-    sections = split_sections(cleaned)
-    print(f"  {len(pages)} pages, {len(cleaned)} chars, "
-          f"{len(sections)} sections, OCR on {ocr_pages or 'none'}")
-
-    out_html = build_html(adam, sections, ocr_pages, len(cleaned))
-    out_path = f"{OUT_DIR}/{adam}.html"
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(out_html)
-    print(f"\nWritten: {out_path}")
-    print(f"View at: https://delta-primecs.github.io/tender-monitor/contracts/{adam}.html")
 
 
 if __name__ == "__main__":
