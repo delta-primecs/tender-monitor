@@ -16,12 +16,99 @@
   function renderNav() {
     const slot = document.getElementById("nav");
     if (!slot) return;
+    // Inject the permanent command bar ABOVE the nav, once.
+    ensureTopCmd();
     const cur = here();
     slot.className = "nav";
     slot.innerHTML = TABS.map(t => {
       const on = t.href.toLowerCase() === cur ? ' class="on"' : "";
       return `<a href="${t.href}"${on}><span class="kbd">${t.key}</span>${t.label}</a>`;
     }).join("") + `<span class="nav-hint">? για βοήθεια</span>`;
+  }
+
+  // ── Permanent top command bar (always visible, like Gödel) ───────────────
+  function ensureTopCmd() {
+    if (document.getElementById("topcmd")) return;
+    const nav = document.getElementById("nav");
+    if (!nav) return;
+    const bar = document.createElement("div");
+    bar.id = "topcmd";
+    bar.innerHTML =
+      '<div class="tc-row">' +
+      '<span class="tc-prompt">&gt;</span>' +
+      '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
+      'placeholder="Εντολή ή αναζήτηση — π.χ. CON, ACC, ή όνομα φορέα/αναδόχου…">' +
+      '<span class="tc-hint">εντολές: OPEN · EXP · ACC · CHG · REG · CON · NEWS</span>' +
+      '</div>' +
+      '<div class="tc-list" id="tclist"></div>';
+    nav.parentNode.insertBefore(bar, nav);
+
+    const input = document.getElementById("tcinput");
+    input.addEventListener("input", () => renderTopSuggestions(input.value.trim()));
+    input.addEventListener("focus", () => renderTopSuggestions(input.value.trim()));
+    input.addEventListener("blur", () => {
+      // delay so a click on a suggestion still registers
+      setTimeout(() => { const l = document.getElementById("tclist"); if (l) l.innerHTML = ""; }, 150);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { input.value = ""; document.getElementById("tclist").innerHTML = ""; input.blur(); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); moveTopSel(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); moveTopSel(-1); }
+      else if (e.key === "Enter") { runTopSelected(input.value.trim()); }
+    });
+  }
+
+  let topSug = [], topSel = 0;
+
+  function computeSug(v) {
+    const low = v.toLowerCase();
+    const out = [];
+    TABS.forEach(t => {
+      if (!low || t.code.toLowerCase().startsWith(low) ||
+          t.label.toLowerCase().includes(low) || t.key === low) {
+        out.push({ type: "tab", label: t.label, code: t.code, key: t.key, href: t.href });
+      }
+    });
+    if (low) {
+      out.push({ type: "search", label: 'Αναζήτηση: "' + v + '"',
+                 code: "→ Contractors", href: "contractors.html?q=" + encodeURIComponent(v) });
+    }
+    return out;
+  }
+
+  function renderTopSuggestions(v) {
+    topSug = computeSug(v); topSel = 0;
+    const list = document.getElementById("tclist");
+    if (!list) return;
+    if (!v && document.activeElement !== document.getElementById("tcinput")) { list.innerHTML = ""; return; }
+    if (!topSug.length) { list.innerHTML = ""; return; }
+    list.innerHTML = topSug.map((s, i) =>
+      '<div class="tc-item' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '">' +
+      (s.type === "tab" ? '<span class="tc-key">' + s.key + '</span>'
+                        : '<span class="tc-key tc-search">⌕</span>') +
+      '<span class="tc-label">' + s.label + '</span>' +
+      '<span class="tc-code">' + s.code + '</span>' +
+      '<span class="tc-enter">Enter ⏎</span></div>'
+    ).join("");
+    Array.from(list.querySelectorAll(".tc-item")).forEach(el => {
+      el.addEventListener("mousedown", (ev) => {   // mousedown fires before blur
+        ev.preventDefault();
+        topSel = parseInt(el.dataset.i, 10);
+        runTopSelected(document.getElementById("tcinput").value.trim());
+      });
+    });
+  }
+
+  function moveTopSel(d) {
+    if (!topSug.length) return;
+    topSel = (topSel + d + topSug.length) % topSug.length;
+    document.querySelectorAll("#tclist .tc-item").forEach((el, i) =>
+      el.classList.toggle("sel", i === topSel));
+  }
+
+  function runTopSelected(v) {
+    if (topSug.length && topSug[topSel]) { location.href = topSug[topSel].href; return; }
+    if (v) location.href = "contractors.html?q=" + encodeURIComponent(v);
   }
 
   function ensureCmdBar() {
@@ -170,9 +257,11 @@
     if (tab) { location.href = tab.href; return; }
     if (e.key === "/") {
       const s = document.querySelector('input[type="search"], #q');
-      if (s) { e.preventDefault(); s.focus(); }
+      const target = s || document.getElementById("tcinput");
+      if (target) { e.preventDefault(); target.focus(); }
     } else if (e.key === ":" || e.key === "g") {
-      e.preventDefault(); openCmd();
+      const tc = document.getElementById("tcinput");
+      if (tc) { e.preventDefault(); tc.focus(); }
     } else if (e.key === "?") {
       e.preventDefault(); toggleHelp();
     } else if (e.key === "Escape") {
