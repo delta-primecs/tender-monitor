@@ -18,10 +18,12 @@ permissions:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 350        # near GitHub's 6h max — fewer re-runs needed
     steps:
       - name: Get the code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0        # full history so rebase/push works cleanly
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -36,23 +38,5 @@ jobs:
       - name: Install Python dependencies
         run: pip install requests pdfplumber pytesseract pdf2image
 
-      - name: Backfill contract text
+      - name: Backfill contract text (commits incrementally)
         run: python backfill_contract_text.py "${{ github.event.inputs.days_back }}"
-
-      - name: Publish
-        run: |
-          git config user.name "tender-bot"
-          git config user.email "tender-bot@users.noreply.github.com"
-          git add docs/contracts/
-          if git diff --staged --quiet; then
-            echo "No new pages."
-            exit 0
-          fi
-          git commit -m "Backfill contract text $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            if git pull --rebase origin main && git push; then
-              echo "Published on attempt $i."; exit 0
-            fi
-            echo "Attempt $i failed — retrying."; sleep 10
-          done
-          exit 1
