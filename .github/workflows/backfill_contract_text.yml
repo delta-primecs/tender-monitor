@@ -1,0 +1,58 @@
+name: Backfill Contract Text (one-off)
+
+# Generates full-text pages for the ACTIVE opportunity window (contracts
+# expiring in the future or within the last N days). Run once; future new
+# contracts get their pages automatically via the ingester.
+on:
+  workflow_dispatch:
+    inputs:
+      days_back:
+        description: "Πόσες ημέρες μετά τη λήξη μετράνε ακόμα ως ενεργές"
+        required: false
+        default: "90"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install OCR tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ell poppler-utils
+
+      - name: Install Python dependencies
+        run: pip install requests pdfplumber pytesseract pdf2image
+
+      - name: Backfill contract text
+        run: python backfill_contract_text.py "${{ github.event.inputs.days_back }}"
+
+      - name: Publish
+        run: |
+          git config user.name "tender-bot"
+          git config user.email "tender-bot@users.noreply.github.com"
+          git add docs/contracts/
+          if git diff --staged --quiet; then
+            echo "No new pages."
+            exit 0
+          fi
+          git commit -m "Backfill contract text $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "Published on attempt $i."; exit 0
+            fi
+            echo "Attempt $i failed — retrying."; sleep 10
+          done
+          exit 1
