@@ -39,18 +39,33 @@ body{font-family:var(--mono)!important;-webkit-font-smoothing:antialiased}
 .nav-hint{margin-left:auto;color:var(--muted);font-size:10px;letter-spacing:.08em;
        text-transform:uppercase;opacity:.7}
 
-/* ── Command bar (: or g) ───────────────────────────────── */
+/* ── Command bar with autocomplete (: or g) ─────────────── */
 #cmdbar{position:fixed;inset:0;background:rgba(5,8,12,.6);display:none;
        align-items:flex-start;justify-content:center;z-index:9999}
 #cmdbar.show{display:flex}
-.cmdbox{margin-top:14vh;width:min(600px,92vw);background:var(--panel);
-       border:1px solid var(--accent);box-shadow:0 12px 40px rgba(0,0,0,.6);
-       display:flex;align-items:center;gap:10px;padding:12px 16px}
-.cmdprompt{color:var(--accent);font-family:var(--mono);font-weight:700;font-size:16px}
+.cmdbox{margin-top:14vh;width:min(640px,92vw);background:var(--panel);
+       border:1px solid var(--accent);box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.cmdrow{display:flex;align-items:center;gap:10px;padding:14px 16px;
+       border-bottom:1px solid var(--hair)}
+.cmdprompt{color:var(--accent);font-family:var(--mono);font-weight:700;font-size:18px}
 #cmdinput{flex:1;background:transparent;border:0;outline:0;color:var(--bright);
-       font-family:var(--mono);font-size:15px}
+       font-family:var(--mono);font-size:16px}
 #cmdinput::placeholder{color:var(--muted)}
-.cmdhint{color:var(--muted);font-size:10px;letter-spacing:.06em;white-space:nowrap}
+.cmdlist{max-height:320px;overflow:auto}
+.cmditem{display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer;
+       border-bottom:1px solid var(--hair)}
+.cmditem:last-child{border-bottom:0}
+.cmditem.sel{background:var(--accent-dim)}
+.ci-key{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+       font-size:12px;font-weight:700;border:1px solid var(--hair2);color:var(--muted);
+       background:var(--page);border-radius:3px;flex:none}
+.cmditem.sel .ci-key{border-color:var(--accent);color:var(--accent)}
+.ci-search{color:var(--accent)}
+.ci-label{flex:1;color:var(--text);font-size:14px}
+.cmditem.sel .ci-label{color:var(--bright)}
+.ci-code{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.ci-enter{color:var(--muted);font-size:10px;opacity:0;white-space:nowrap}
+.cmditem.sel .ci-enter{opacity:1;color:var(--accent)}
 
 /* ── Help overlay (?) ───────────────────────────────────── */
 #kbhelp{position:fixed;inset:0;background:rgba(5,8,12,.7);display:none;
