@@ -135,6 +135,7 @@ TEMPLATE = r"""<!doctype html>
 </style>
 </head>
 <body>
+<link rel="stylesheet" href="godel.css">
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
