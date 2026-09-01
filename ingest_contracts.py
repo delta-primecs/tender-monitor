@@ -363,6 +363,7 @@ def main():
         wins = [(dfrom, dto)]
 
     events, added, updated, republished = [], 0, 0, 0
+    new_adams = []   # brand-new ΑΔΑΜs → generate full-text pages after save
     for dfrom, dto in wins:
         if first_run:
             print(f"  {dfrom} → {dto}")
@@ -429,6 +430,7 @@ def main():
             store[adam] = p
             prints[fp] = adam
             added += 1
+            new_adams.append(adam)
             k = (p["orgkey"], p["service"])
             had_before = k in latest
             if not first_run:
@@ -446,6 +448,22 @@ def main():
 
     save_store(store)
     log_changes(events)
+
+    # Generate full-text contract pages for brand-new contracts so they open
+    # instantly in the What Changed split-view. Best-effort: never let a PDF
+    # download / OCR failure break the core ingest. Skipped on first_run
+    # (that would be thousands of PDFs — use the separate backfill for history).
+    if new_adams and not first_run:
+        try:
+            from contract_reader import generate_for_adam
+            print(f"\nGenerating full-text pages for {len(new_adams)} new contract(s):")
+            gen_ok = 0
+            for a in new_adams:
+                if generate_for_adam(a, skip_if_exists=True):
+                    gen_ok += 1
+            print(f"  → {gen_ok}/{len(new_adams)} pages ready")
+        except Exception as e:
+            print(f"  (text generation skipped: {type(e).__name__})")
 
     print(f"\nStore: {len(store)} contracts total  (+{added} new, "
           f"{updated} updated, {republished} republications)")
