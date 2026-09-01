@@ -1,0 +1,84 @@
+/* ============================================================
+   GÖDEL TERMINAL THEME — shared across all pages.
+   Loaded via <link rel="stylesheet" href="godel.css"> on every page.
+   Contains: palette, base type, keyboard-nav widgets, and generic
+   dark-mode overrides for cards/tables/pills used across the tool.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+:root{
+  --page:#0a0e14; --panel:#0f141c; --panel-2:#131a24; --card:#0f141c;
+  --text:#d4dae3; --bright:#f0f4f9; --muted:#5f6e82;
+  --hair:#1c2530; --hair2:#26313f;
+  --accent:#3ddc84; --accent-dim:#1f5f3f;
+  --amber:#e8a13a; --amber-bg:#2a2010;
+  --red:#ff5d52; --red-bg:#2a1210;
+  --green:#3ddc84; --green-bg:#0f2418;
+  --link:#5db0ff;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* legacy var aliases so existing page CSS keeps working on dark bg */
+  --ink:var(--bright); --ink-2:var(--panel); --gold:var(--amber);
+  --gold-bg:var(--amber-bg); --renew:var(--red); --renew-bg:var(--red-bg);
+  --new:var(--green); --new-bg:var(--green-bg); --upd:var(--amber);
+  --upd-bg:var(--amber-bg); --has:var(--accent); --has-bg:var(--green-bg);
+  --tag:var(--muted); --tag-bg:var(--panel-2); --link-ink:var(--link);
+}
+html,body{background:var(--page)!important;color:var(--text)!important}
+body{font-family:var(--mono)!important;-webkit-font-smoothing:antialiased}
+
+/* ── Nav bar with key hints ─────────────────────────────── */
+.nav{display:flex;gap:2px;flex-wrap:wrap;align-items:center;font-size:12px}
+.nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);
+       background:var(--panel);text-transform:uppercase;letter-spacing:.05em;font-weight:500;
+       display:flex;align-items:center;gap:7px}
+.nav a:hover{color:var(--text);border-color:var(--hair2)}
+.nav a.on{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)}
+.nav .kbd{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
+       font-size:10px;font-weight:700;border:1px solid var(--hair2);color:var(--muted);
+       background:var(--page);border-radius:3px}
+.nav a.on .kbd{border-color:var(--accent);color:var(--accent)}
+.nav-hint{margin-left:auto;color:var(--muted);font-size:10px;letter-spacing:.08em;
+       text-transform:uppercase;opacity:.7}
+
+/* ── Command bar (: or g) ───────────────────────────────── */
+#cmdbar{position:fixed;inset:0;background:rgba(5,8,12,.6);display:none;
+       align-items:flex-start;justify-content:center;z-index:9999}
+#cmdbar.show{display:flex}
+.cmdbox{margin-top:14vh;width:min(600px,92vw);background:var(--panel);
+       border:1px solid var(--accent);box-shadow:0 12px 40px rgba(0,0,0,.6);
+       display:flex;align-items:center;gap:10px;padding:12px 16px}
+.cmdprompt{color:var(--accent);font-family:var(--mono);font-weight:700;font-size:16px}
+#cmdinput{flex:1;background:transparent;border:0;outline:0;color:var(--bright);
+       font-family:var(--mono);font-size:15px}
+#cmdinput::placeholder{color:var(--muted)}
+.cmdhint{color:var(--muted);font-size:10px;letter-spacing:.06em;white-space:nowrap}
+
+/* ── Help overlay (?) ───────────────────────────────────── */
+#kbhelp{position:fixed;inset:0;background:rgba(5,8,12,.7);display:none;
+       align-items:center;justify-content:center;z-index:9999}
+#kbhelp.show{display:flex}
+.kbbox{background:var(--panel);border:1px solid var(--hair2);padding:22px 26px;
+       min-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.kbtitle{color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.08em;
+       text-transform:uppercase;margin-bottom:14px}
+.kbbox table{width:100%;border-collapse:collapse;font-size:13px}
+.kbbox td{padding:5px 8px;color:var(--text)}
+.kbbox td.k{width:44px;color:var(--accent);font-weight:700;text-align:center;
+       border:1px solid var(--hair2);background:var(--page)}
+.kbfoot{margin-top:14px;color:var(--muted);font-size:11px}
+
+/* ── Generic dark overrides for common page elements ────── */
+.card,.panel,section,.list,main.list{background:var(--card)!important;
+       border-color:var(--hair)!important;color:var(--text)!important}
+table{color:var(--text)}
+th{color:var(--muted)!important;border-color:var(--hair)!important;
+   text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+td{border-color:var(--hair)!important}
+tr:nth-child(even) td{background:var(--panel-2)}
+a{color:var(--link)}
+input,select,textarea{background:var(--page)!important;color:var(--text)!important;
+       border-color:var(--hair2)!important;font-family:var(--mono)!important}
+input::placeholder{color:var(--muted)!important}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--page)}
+::-webkit-scrollbar-thumb{background:var(--hair2);border:2px solid var(--page)}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
