@@ -38,6 +38,10 @@ body{font-family:var(--mono)!important;-webkit-font-smoothing:antialiased}
 .nav a.on .kbd{border-color:var(--accent);color:var(--accent)}
 .nav-hint{margin-left:auto;color:var(--muted);font-size:10px;letter-spacing:.08em;
        text-transform:uppercase;opacity:.7}
+.navslim{display:flex;align-items:center;gap:12px;padding:2px 2px 0}
+.nav-here{display:flex;align-items:center;gap:8px;color:var(--accent);font-size:12px;
+       font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.nav-here .kbd{border-color:var(--accent);color:var(--accent)}
 
 /* ── Permanent top command bar (Gödel-style, always visible) ─ */
 #topcmd{max-width:1600px;margin:0 auto 8px;background:var(--panel);
