@@ -8,7 +8,7 @@
     { key: "4", href: "changes.html",     label: "What changed",     code: "CHG"  },
     { key: "5", href: "regulation.html",  label: "Regulatory radar", code: "REG"  },
     { key: "6", href: "contractors.html", label: "Contractors",      code: "CON"  },
-    { key: "7", href: "news.html",        label: "Νέα",              code: "NEWS" },
+    { key: "7", href: "news.html",        label: "NEWS",              code: "NEWS" },
   ];
 
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
