@@ -364,10 +364,10 @@ TEMPLATE = r"""<!doctype html>
   }
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:var(--mono);line-height:1.5;padding:24px 16px 56px;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:900px;margin:0 auto}
-  .nav{max-width:900px;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
-  .nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);border-radius:8px;background:var(--card)}
-  .nav a.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .wrap{max-width:1600px;margin:0 auto}
+  .nav{max-width:1600px;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
+  
+  
   .desk{background:var(--panel);color:var(--text);border:1px solid var(--hair);padding:22px 24px 20px}
   .live-label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9fd8c2;font-weight:600}
   h1{font-family:var(--mono);font-weight:700;font-size:27px;margin:8px 0 2px;letter-spacing:-.01em}
@@ -414,7 +414,7 @@ TEMPLATE = r"""<!doctype html>
   .gaps .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gap);font-weight:700}
   .pill.gap{background:var(--gap-bg);color:var(--gap)}
   .empty{padding:34px;text-align:center;color:var(--muted);display:none}
-  .foot{max-width:900px;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
+  .foot{max-width:1600px;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
   .foot b{color:var(--text)}
   a.doc{font-size:12px;color:var(--link-ink);text-decoration:none}
   a.doc:hover{text-decoration:underline}
