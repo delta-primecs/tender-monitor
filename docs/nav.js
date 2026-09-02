@@ -38,8 +38,8 @@
       '<div class="tc-row">' +
       '<span class="tc-prompt">&gt;</span>' +
       '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
-      'placeholder="Εντολή ή αναζήτηση — π.χ. CON, ACC, ή όνομα φορέα/αναδόχου…">' +
-      '<span class="tc-hint">` για άνοιγμα · εντολές: OPEN · EXP · ACC · CHG · REG · CON · NEWS</span>' +
+      'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   EXP σοφαδων">' +
+      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
     nav.parentNode.insertBefore(bar, nav);
@@ -62,17 +62,37 @@
   let topSug = [], topSel = 0;
 
   function computeSug(v) {
-    const low = v.toLowerCase();
+    const parts = v.trim().split(/\s+/);
+    const head = (parts[0] || "").toUpperCase();
+    const term = parts.slice(1).join(" ").trim();
     const out = [];
+
+    const exact = TABS.find(t => t.code === head);
+    if (exact) {
+      // Recognized tab code first → show the resolved action
+      out.push({
+        type: "go",
+        label: exact.label + (term ? ' · φίλτρο: "' + term + '"' : ""),
+        code: exact.code + (term ? " " + term : ""),
+        key: exact.key,
+        href: exact.href + (term ? "?q=" + encodeURIComponent(term) : ""),
+      });
+      return out;
+    }
+
+    // Otherwise: suggest tabs whose code/label matches what's typed
+    const low = v.toLowerCase();
     TABS.forEach(t => {
       if (!low || t.code.toLowerCase().startsWith(low) ||
           t.label.toLowerCase().includes(low) || t.key === low) {
-        out.push({ type: "tab", label: t.label, code: t.code, key: t.key, href: t.href });
+        out.push({ type: "tab", label: t.label, code: t.code + " <όρος>",
+                   key: t.key, href: t.href });
       }
     });
+    // default search action for a free term
     if (low) {
-      out.push({ type: "search", label: 'Αναζήτηση: "' + v + '"',
-                 code: "→ Contractors", href: "contractors.html?q=" + encodeURIComponent(v) });
+      out.push({ type: "search", label: 'Αναζήτηση: "' + v.trim() + '"',
+                 code: "→ CON", href: "contractors.html?q=" + encodeURIComponent(v.trim()) });
     }
     return out;
   }
@@ -207,14 +227,29 @@
     if (b) b.classList.remove("show");
   }
 
+  function parseCommand(v) {
+    // Grammar:  <TAB> [term...]   e.g. "CON kps",  "ACC ναουσα",  "REG 4795"
+    //           <TAB>             e.g. "CON"       → tab, no filter
+    //           <term...>         e.g. "ναουσα"    → default search (Contractors)
+    const parts = v.trim().split(/\s+/);
+    if (!parts.length || !parts[0]) return null;
+    const head = parts[0].toUpperCase();
+    const tab = TABS.find(t => t.code === head);
+    if (tab) {
+      const term = parts.slice(1).join(" ").trim();
+      let href = tab.href;
+      if (term) href += "?q=" + encodeURIComponent(term);
+      return { href, label: tab.label + (term ? ' · "' + term + '"' : "") };
+    }
+    // no recognized tab code → treat whole thing as a search term
+    return { href: "contractors.html?q=" + encodeURIComponent(v.trim()),
+             label: 'Αναζήτηση: "' + v.trim() + '"' };
+  }
+
   function runCmd(v) {
     if (!v) { closeCmd(); return; }
-    const low = v.toLowerCase();
-    const hit = TABS.find(t => t.code.toLowerCase() === low)
-             || TABS.find(t => t.code.toLowerCase().startsWith(low))
-             || TABS.find(t => t.label.toLowerCase().startsWith(low));
-    if (hit) { location.href = hit.href; return; }
-    location.href = "contractors.html?q=" + encodeURIComponent(v);
+    const cmd = parseCommand(v);
+    if (cmd) location.href = cmd.href;
   }
 
   function ensureHelp() {
