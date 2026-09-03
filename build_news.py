@@ -118,7 +118,7 @@ TEMPLATE = r"""<!doctype html>
 <title>NEWS · Αυτοδιοίκηση</title>
 <link rel="stylesheet" href="godel.css">
 <style>
-  .wrap{max-width:1600px;margin:0 auto}
+  .wrap{max-width:none;margin:0 auto}
   .desk{background:var(--panel);border:1px solid var(--hair);padding:12px 16px;
         display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .live-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);
@@ -148,7 +148,7 @@ TEMPLATE = r"""<!doctype html>
   .sum{font-size:12px;color:var(--muted);margin-top:3px}
   .when{font-size:11px;color:var(--muted);white-space:nowrap;text-align:right;min-width:80px}
   .empty{padding:40px;text-align:center;color:var(--muted)}
-  .foot{max-width:1600px;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.6}
+  .foot{max-width:none;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.6}
 </style></head><body>
 <div id="nav"></div>
 <div class="wrap">
