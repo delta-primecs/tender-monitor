@@ -33,7 +33,7 @@
        line-height:1.45;padding:14px 12px 40px;-webkit-font-smoothing:antialiased;
        font-size:13px}
   .wrap{max-width:1100px;margin:0 auto}
-  .nav{max-width:1600px;margin:0 auto 8px;display:flex;gap:2px;font-size:12px;flex-wrap:wrap}
+  .nav{max-width:none;margin:0 auto 8px;display:flex;gap:2px;font-size:12px;flex-wrap:wrap}
   .nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);
          background:var(--panel);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
   .nav a:hover{color:var(--text);border-color:var(--hair-2)}
@@ -104,11 +104,11 @@
   .date-ago{font-size:10px;color:var(--muted);margin-top:2px}
   .empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:13px}
   .empty b{color:var(--bright)}
-  .foot{max-width:1600px;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
+  .foot{max-width:none;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
   .foot b{color:var(--text)}
 
   /* Split-view */
-  .wrap{max-width:1600px}
+  .wrap{max-width:none}
   .split{display:flex;gap:2px;align-items:flex-start}
   .left{flex:1 1 46%;min-width:0}
   .right{flex:1 1 54%;position:sticky;top:12px;height:calc(100vh - 24px);
@@ -144,34 +144,28 @@
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="live-label">Live feed · ΚΗΜΔΗΣ</div>
-    <h1>What changed</h1>
-    <div class="sub">Ανανεώσεις & νέες συμβάσεις στους τομείς σου — μόλις εμφανιστούν</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="s-all">0</div><div class="l">Events</div></div>
-      <div class="stat"><div class="n hot" id="s-renew">0</div><div class="l">Renewals</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">03/09/2026 08:40</div><div class="l">Updated</div></div>
-    </div>
-  </header>
-  <div class="controls">
-    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
-    <span class="hint-cmd">Αναζήτηση: <b>CHG &lt;όρος&gt;</b> από τη γραμμή εντολών</span>
-    <div class="filters">
-      <span class="flabel">Τύπος</span>
+  <div class="deskbar">
+    <span class="db-title">WHAT CHANGED</span>
+    <span class="db-sub">ΚΗΜΔΗΣ · live feed</span>
+    <div class="db-filters">
       <div class="seg">
         <button data-ev="all" aria-pressed="true">Όλα</button>
         <button data-ev="RENEWAL" aria-pressed="false">Ανανεώσεις</button>
         <button data-ev="NEW" aria-pressed="false">Νέες</button>
       </div>
-      <span class="flabel">Τομέας</span><div class="seg" id="seg-svc"></div>
-      <span class="flabel">Διάστημα</span>
+      <div class="seg" id="seg-svc"></div>
       <div class="seg">
-        <button data-win="7" aria-pressed="false">7 ημ.</button>
-        <button data-win="30" aria-pressed="false">30 ημ.</button>
+        <button data-win="7" aria-pressed="false">7ημ</button>
+        <button data-win="30" aria-pressed="false">30ημ</button>
         <button data-win="0" aria-pressed="true">Όλα</button>
       </div>
     </div>
+    <div class="db-stats">
+      <span><b id="s-all">0</b> events</span>
+      <span><b class="hot" id="s-renew">0</b> renewals</span>
+      <span class="db-stamp">03/09/2026 10:42</span>
+    </div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
   </div>
   <div class="split">
     <div class="left">
