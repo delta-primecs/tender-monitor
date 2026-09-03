@@ -80,8 +80,8 @@ TEMPLATE = r"""<!doctype html>
   }
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:var(--mono);line-height:1.5;padding:24px 16px 56px;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1600px;margin:0 auto}
-  .nav{max-width:1600px;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
+  .wrap{max-width:none;margin:0 auto}
+  .nav{max-width:none;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
   
   
   .desk{background:var(--panel);color:var(--text);border:1px solid var(--hair);padding:22px 24px 20px}
@@ -137,7 +137,7 @@ TEMPLATE = r"""<!doctype html>
   .doc{color:var(--link-ink);text-decoration:none;font-weight:600}
   .doc:hover{text-decoration:underline}
   .empty{padding:34px;text-align:center;color:var(--muted)}
-  .foot{max-width:1600px;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
+  .foot{max-width:none;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
   .split{display:flex;gap:2px;align-items:flex-start}
   .left{flex:1 1 55%;min-width:0;overflow-x:auto}
   .right{flex:1 1 45%;position:sticky;top:12px;height:calc(100vh - 24px);
