@@ -194,3 +194,27 @@ html[data-density="dense"] .stat .n{font-size:17px!important}
    style). A modest side padding keeps content off the very edge. */
 body{padding-left:16px!important;padding-right:16px!important}
 .wrap,.nav,.foot,#topcmd{max-width:none!important;margin-left:0!important;margin-right:0!important}
+
+/* ── Compact single-line header bar (Gödel-style deskbar) ─────────────────
+   Replaces the big hero header: title + filters + stats on ONE line,
+   then data immediately below. Reused across pages. */
+.deskbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  background:var(--panel);border:1px solid var(--hair);
+  padding:8px 14px;position:relative}
+.db-title{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--bright);
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.db-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+  white-space:nowrap;padding-left:14px;border-left:1px solid var(--hair2)}
+.db-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.db-stats{display:flex;gap:16px;align-items:center;margin-left:auto;
+  font-size:11px;color:var(--muted);white-space:nowrap}
+.db-stats b{color:var(--bright);font-weight:700;font-size:13px}
+.db-stamp{color:var(--muted);font-size:11px;padding-left:14px;border-left:1px solid var(--hair2)}
+.deskbar .seg{display:inline-flex;border:1px solid var(--hair2);overflow:hidden}
+.deskbar .seg button{font:inherit;font-family:var(--mono);font-size:10.5px;font-weight:500;
+  color:var(--muted);background:var(--page);border:0;padding:4px 9px;cursor:pointer;
+  border-left:1px solid var(--hair2);text-transform:uppercase;letter-spacing:.03em}
+.deskbar .seg button:first-child{border-left:0}
+.deskbar .seg button:hover{color:var(--text)}
+.deskbar .seg button[aria-pressed="true"]{background:var(--accent-dim);color:var(--accent)}
+@media(max-width:760px){.db-sub,.db-stamp{display:none}.db-stats{margin-left:0}}
