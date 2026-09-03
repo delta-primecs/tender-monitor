@@ -23,23 +23,25 @@ import feedparser
 # All WordPress-based local-gov news portals -> standard /feed/ RSS.
 # Add/remove freely; a dead feed is skipped, never breaks the build.
 FEEDS = [
-    # Τοπική Αυτοδιοίκηση - ποιος Δήμος κινείται (κρατάμε τις 2 ισχυρότερες)
+    # Topiki Aftodioikisi
     ("Αυτοδιοίκηση", "https://www.aftodioikisi.gr/feed/"),
-    ("Airetos",      "https://airetos.gr/feed/"),
+    ("Airetos",      "https://www.airetos.gr/feed/"),
 
-    # Φορολογικά / Λογιστικά / Νομοθεσία
+    # Forologika / Logistika / Nomothesia
     ("Taxheaven · Νέα",
      "https://www.taxheaven.gr/bibliothiki/soft/xml/soft_new.xml"),
-    ("Taxheaven · Φορ. ημερολόγιο",
+    ("Taxheaven · Ημερολόγιο",
      "https://www.taxheaven.gr/bibliothiki/soft/xml/soft_dat.xml"),
 
-    # Οικονομία / Αγορές
+    # Oikonomia / Agores
     ("ΟΤ · Οικονομία", "https://www.ot.gr/category/oikonomia/feed/"),
     ("ΟΤ · Φορολογία", "https://www.ot.gr/category/forologia/feed/"),
     ("ΟΤ · Αγορές",    "https://www.ot.gr/category/agores/feed/"),
 
-    # Νομικά
-    ("Lawspot", "https://www.lawspot.gr/feed/"),
+    # Epipleon oikonomikes/nomikes piges (known-working RSS)
+    ("Καθημερινή · Οικ.", "https://feeds.feedburner.com/kathimerini_economy"),
+    ("Capital.gr",   "https://www.capital.gr/rss"),
+    ("Ναυτεμπορική", "https://www.naftemporiki.gr/feed/"),
 ]
 
 MAX_PER_FEED = 40      # cap per source so one prolific feed doesn't dominate
