@@ -23,25 +23,20 @@ import feedparser
 # All WordPress-based local-gov news portals -> standard /feed/ RSS.
 # Add/remove freely; a dead feed is skipped, never breaks the build.
 FEEDS = [
-    # Topiki Aftodioikisi
-    ("Αυτοδιοίκηση", "https://www.aftodioikisi.gr/feed/"),
-    ("Airetos",      "https://www.airetos.gr/feed/"),
+    # (name, url, category)  — category ΠΡΟΘΕΣΜΙΕΣ = deadline calendar (sorted soonest-first)
+    ("Αυτοδιοίκηση", "https://www.aftodioikisi.gr/feed/",                         "ΑΥΤΟΔΙΟΙΚΗΣΗ"),
+    ("Airetos",      "https://www.airetos.gr/feed/",                             "ΑΥΤΟΔΙΟΙΚΗΣΗ"),
 
-    # Forologika / Logistika / Nomothesia
-    ("Taxheaven · Νέα",
-     "https://www.taxheaven.gr/bibliothiki/soft/xml/soft_new.xml"),
-    ("Taxheaven · Ημερολόγιο",
-     "https://www.taxheaven.gr/bibliothiki/soft/xml/soft_dat.xml"),
+    ("Taxheaven · Νέα",       "https://www.taxheaven.gr/bibliothiki/soft/xml/soft_new.xml", "ΦΟΡΟΛΟΓΙΚΑ"),
+    ("Taxheaven · Προθεσμίες","https://www.taxheaven.gr/bibliothiki/soft/xml/soft_dat.xml", "ΠΡΟΘΕΣΜΙΕΣ"),
 
-    # Oikonomia / Agores
-    ("ΟΤ · Οικονομία", "https://www.ot.gr/category/oikonomia/feed/"),
-    ("ΟΤ · Φορολογία", "https://www.ot.gr/category/forologia/feed/"),
-    ("ΟΤ · Αγορές",    "https://www.ot.gr/category/agores/feed/"),
+    ("ΟΤ · Οικονομία", "https://www.ot.gr/category/oikonomia/feed/", "ΟΙΚΟΝΟΜΙΑ"),
+    ("ΟΤ · Φορολογία", "https://www.ot.gr/category/forologia/feed/", "ΦΟΡΟΛΟΓΙΚΑ"),
+    ("ΟΤ · Αγορές",    "https://www.ot.gr/category/agores/feed/",    "ΟΙΚΟΝΟΜΙΑ"),
 
-    # Epipleon oikonomikes/nomikes piges (known-working RSS)
-    ("Καθημερινή · Οικ.", "https://feeds.feedburner.com/kathimerini_economy"),
-    ("Capital.gr",   "https://www.capital.gr/rss"),
-    ("Ναυτεμπορική", "https://www.naftemporiki.gr/feed/"),
+    ("Καθημερινή · Οικ.", "https://feeds.feedburner.com/kathimerini_economy", "ΟΙΚΟΝΟΜΙΑ"),
+    ("Capital.gr",   "https://www.capital.gr/rss",           "ΟΙΚΟΝΟΜΙΑ"),
+    ("Ναυτεμπορική", "https://www.naftemporiki.gr/feed/",    "ΟΙΚΟΝΟΜΙΑ"),
 ]
 
 MAX_PER_FEED = 40      # cap per source so one prolific feed doesn't dominate
@@ -49,10 +44,11 @@ MAX_TOTAL    = 200     # overall cap on the page
 TIMEOUT      = 20      # feedparser has no direct timeout; we guard via socket
 
 
-def fetch_feed(name, url):
+def fetch_feed(name, url, category):
     """Return list of normalized items. Never raises. Tolerant of non-standard
     XML (e.g. Taxheaven custom feeds) - needs only a title to keep an item."""
     items = []
+    is_deadline = (category == "ΠΡΟΘΕΣΜΙΕΣ")
     try:
         import socket
         socket.setdefaulttimeout(TIMEOUT)
@@ -64,9 +60,7 @@ def fetch_feed(name, url):
             title = (e.get("title") or "").strip()
             if not title:
                 continue
-            # link: standard, else guid/id, else the feed url as fallback
             link = (e.get("link") or e.get("id") or e.get("guid") or url).strip()
-            # published time -> epoch for sorting (check several possible fields)
             ts = 0
             for key in ("published_parsed", "updated_parsed", "created_parsed", "date_parsed"):
                 if e.get(key):
@@ -79,8 +73,9 @@ def fetch_feed(name, url):
             items.append({
                 "source": name, "title": title, "link": link,
                 "ts": ts, "summary": summary,
+                "cat": category, "deadline": is_deadline,
             })
-        print(f"  {name}: {len(items)} items")
+        print(f"  {name}: {len(items)} items [{category}]")
     except Exception as ex:
         print(f"  {name}: FAILED ({type(ex).__name__})")
     return items
@@ -96,8 +91,8 @@ def strip_html(s):
 def main():
     print("Fetching news feeds ...")
     all_items = []
-    for name, url in FEEDS:
-        all_items.extend(fetch_feed(name, url))
+    for name, url, category in FEEDS:
+        all_items.extend(fetch_feed(name, url, category))
 
     # dedupe by link
     seen, deduped = set(), []
@@ -107,11 +102,14 @@ def main():
         seen.add(it["link"])
         deduped.append(it)
 
-    # newest first
+    # Sort here as a sensible default; the page re-sorts per active filter.
+    # News: newest first (ts desc). Deadlines get their own sort in JS.
     deduped.sort(key=lambda x: x["ts"], reverse=True)
     deduped = deduped[:MAX_TOTAL]
 
-    print(f"\nTotal after dedupe: {len(deduped)} items from "
+    n_dead = sum(1 for i in deduped if i.get("deadline"))
+    print(f"\nTotal after dedupe: {len(deduped)} items "
+          f"({n_dead} deadlines) from "
           f"{len(set(i['source'] for i in deduped))} live sources")
 
     stamp = datetime.now(timezone.utc).astimezone().strftime("%d/%m/%Y %H:%M")
@@ -169,6 +167,11 @@ TEMPLATE = r"""<!doctype html>
   .nr-date,.nr-time{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
   .nr-src{font-size:10px;color:var(--accent);text-transform:uppercase;
     letter-spacing:.05em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .newsrow.hot{background:var(--amber-bg,#2a2010)!important}
+  .newsrow.hot .nr-time{color:var(--amber,#e8a13a);font-weight:700}
+  .newsrow.past{opacity:.45}
+  .newsrow.past .nr-time{color:var(--muted)}
+  .dl-tag{font-size:11px}
   .empty{padding:40px;text-align:center;color:var(--muted)}
   .foot{max-width:none;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.6}
 </style></head><body>
@@ -178,7 +181,13 @@ TEMPLATE = r"""<!doctype html>
     <span class="db-title">NEWS</span>
     <span class="db-sub">ΤΟΠΙΚΗ ΑΥΤΟΔΙΟΙΚΗΣΗ · RSS</span>
     <div class="db-filters">
-      <span class="hint-cmd">φίλτρο: <b>NEWS &lt;όρος&gt;</b></span>
+      <div class="seg" id="seg-cat">
+        <button data-cat="all" aria-pressed="true">Όλα</button>
+        <button data-cat="ΑΥΤΟΔΙΟΙΚΗΣΗ" aria-pressed="false">Αυτοδιοίκηση</button>
+        <button data-cat="ΦΟΡΟΛΟΓΙΚΑ" aria-pressed="false">Φορολογικά</button>
+        <button data-cat="ΟΙΚΟΝΟΜΙΑ" aria-pressed="false">Οικονομία</button>
+        <button data-cat="ΠΡΟΘΕΣΜΙΕΣ" aria-pressed="false">⏰ Προθεσμίες</button>
+      </div>
     </div>
     <div class="db-stats">
       <span class="db-stamp">__STAMP__</span>
@@ -197,29 +206,59 @@ TEMPLATE = r"""<!doctype html>
 <script>
 const ITEMS = __DATA__;
 const listEl=document.getElementById('list'), emptyEl=document.getElementById('empty'), qEl=document.getElementById('q');
+let catFilter='all';
 function pad(n){return String(n).padStart(2,'0');}
 function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts*1000);
   return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2); }
 function fmtTime(ts){ if(!ts) return '—'; const d=new Date(ts*1000);
   return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function daysLeft(ts){ if(!ts) return null; return Math.ceil((ts*1000 - Date.now())/86400000); }
 function render(){
   const q=(qEl.value||'').trim().toLowerCase();
-  const rows = q ? ITEMS.filter(i=>((i.title||'')+' '+(i.summary||'')+' '+(i.source||'')).toLowerCase().includes(q)) : ITEMS;
-  let html='<div class="newshead"><span class="nh-ttl">Τίτλος</span><span class="nh-date">Ημ/νία</span><span class="nh-time">Ώρα</span><span class="nh-src">Πηγή</span></div>';
+  let rows = ITEMS.filter(i=>{
+    if(catFilter!=='all' && i.cat!==catFilter) return false;
+    if(q && !((i.title||'')+' '+(i.summary||'')+' '+(i.source||'')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const deadlineView = (catFilter==='ΠΡΟΘΕΣΜΙΕΣ');
+  if(deadlineView){
+    // soonest deadline first; past ones sink
+    rows = rows.slice().sort((a,b)=>(a.ts||9e12)-(b.ts||9e12));
+  }
+  const dateHdr = deadlineView ? 'Λήγει' : 'Ημ/νία';
+  let html='<div class="newshead"><span class="nh-ttl">Τίτλος</span>'+
+           '<span class="nh-date">'+dateHdr+'</span>'+
+           (deadlineView?'<span class="nh-time">Απομ.</span>':'<span class="nh-time">Ώρα</span>')+
+           '<span class="nh-src">Πηγή</span></div>';
   rows.slice(0,400).forEach(i=>{
     const safe=(i.title||'').replace(/"/g,'&quot;');
-    html+='<a class="newsrow" href="'+i.link+'" target="_blank" rel="noopener">'+
-      '<span class="nr-ttl" title="'+safe+'">'+(i.title||'')+'</span>'+
+    let col3, rowcls='';
+    if(i.deadline){
+      const dl=daysLeft(i.ts);
+      if(dl===null) col3='—';
+      else if(dl<0){ col3='έληξε'; rowcls=' past'; }
+      else if(dl===0){ col3='σήμερα'; rowcls=' hot'; }
+      else { col3=dl+'ημ'; if(dl<=7) rowcls=' hot'; }
+    } else {
+      col3=fmtTime(i.ts);
+    }
+    html+='<a class="newsrow'+rowcls+'" href="'+i.link+'" target="_blank" rel="noopener">'+
+      '<span class="nr-ttl" title="'+safe+'">'+(i.deadline?'<span class="dl-tag">⏰</span> ':'')+(i.title||'')+'</span>'+
       '<span class="nr-date">'+fmtDate(i.ts)+'</span>'+
-      '<span class="nr-time">'+fmtTime(i.ts)+'</span>'+
+      '<span class="nr-time">'+col3+'</span>'+
       '<span class="nr-src">'+(i.source||'')+'</span>'+
       '</a>';
   });
   listEl.innerHTML=html;
   emptyEl.style.display = rows.length? 'none':'block';
-  emptyEl.textContent = rows.length? '' : 'Καμία είδηση δεν ταιριάζει.';
+  emptyEl.textContent = rows.length? '' : 'Καμία εγγραφή δεν ταιριάζει.';
 }
 qEl.addEventListener('input', render);
+document.querySelectorAll('#seg-cat button').forEach(b=>b.addEventListener('click',()=>{
+  catFilter=b.dataset.cat;
+  document.querySelectorAll('#seg-cat button').forEach(x=>x.setAttribute('aria-pressed', x===b));
+  render();
+}));
 render();
 </script>
 </body></html>"""
