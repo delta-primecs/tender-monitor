@@ -138,6 +138,37 @@ TEMPLATE = r"""<!doctype html>
   .doc:hover{text-decoration:underline}
   .empty{padding:34px;text-align:center;color:var(--muted)}
   .foot{max-width:1600px;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
+  .split{display:flex;gap:2px;align-items:flex-start}
+  .left{flex:1 1 55%;min-width:0;overflow-x:auto}
+  .right{flex:1 1 45%;position:sticky;top:12px;height:calc(100vh - 24px);
+         background:var(--panel);border:1px solid var(--hair);border-top:0;
+         display:flex;flex-direction:column;overflow:hidden}
+  tbody tr[data-adam]{cursor:pointer}
+  tbody tr.sel{background:var(--accent-dim)!important;box-shadow:inset 3px 0 0 var(--accent)}
+  .opencue{color:var(--link);font-size:10.5px;margin-left:6px;opacity:0;white-space:nowrap}
+  tbody tr:hover .opencue{opacity:1}
+  .detail-empty{margin:auto;text-align:center;color:var(--muted);font-size:13px;padding:40px}
+  .de-icon{font-size:40px;color:var(--hair2);margin-bottom:14px}
+  .detail-head{display:flex;align-items:center;gap:12px;padding:10px 14px;
+       border-bottom:1px solid var(--hair);background:#0c1219}
+  .dh-adam{color:var(--accent);font-weight:700;font-size:12px;letter-spacing:.04em}
+  .dh-close{margin-left:auto;color:var(--muted);cursor:pointer;text-decoration:none;font-size:14px}
+  .dh-close:hover{color:var(--hot,#ff5d52)}
+  #detail-frame{flex:1;width:100%;border:0;background:var(--page)}
+  .detail-missing{margin:auto;text-align:center;padding:40px 30px;max-width:420px}
+  .dm-title{color:var(--signal,#e8a13a);font-size:14px;font-weight:700;margin-bottom:10px}
+  .dm-sub{color:var(--muted);font-size:12px;line-height:1.6;margin-bottom:20px}
+  .dm-btn{display:inline-block;background:var(--accent-dim);color:var(--accent);
+       border:1px solid var(--accent);padding:10px 18px;text-decoration:none;
+       font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  .dm-btn:hover{background:var(--accent);color:var(--page)}
+  .dm-alt{display:block;margin-top:16px;color:var(--link);font-size:11px;text-decoration:none}
+  .hint-cmd{font-size:11px;color:var(--muted)}
+  .hint-cmd b{color:var(--accent)}
+  @media(max-width:900px){
+    .split{flex-direction:column}
+    .right{position:static;width:100%;height:70vh;border-top:1px solid var(--hair)}
+  }
   .foot b{color:var(--text)}
 </style>
 </head>
@@ -157,7 +188,8 @@ TEMPLATE = r"""<!doctype html>
     </div>
   </header>
   <div class="controls">
-    <div class="search"><input id="q" type="search" placeholder="Ανάδοχος — π.χ. EMERA, LEVER, AUDIT REVIEW…" autofocus></div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
+    <span class="hint-cmd">Αναζήτηση: <b>CON &lt;όνομα&gt;</b> από τη γραμμή εντολών</span>
     <button id="dl" class="btn" disabled>Download CSV</button>
     <button id="dl90" class="btn" title="Κατέβασε λίστα με όλες τις συμβάσεις που λήγουν στις επόμενες 90 ημέρες — hit list για τηλεφωνήματα">⬇ Λήξεις 90 ημ.</button>
   </div>
@@ -185,21 +217,41 @@ TEMPLATE = r"""<!doctype html>
       </div>
     </div>
   </section>
-  <main class="list">
-    <table id="tbl">
-      <thead><tr>
-        <th data-k="holder">Ανάδοχος <span class="arr"></span></th>
-        <th data-k="org">Οργανισμός <span class="arr"></span></th>
-        <th data-k="service">Υπηρεσία <span class="arr"></span></th>
-        <th data-k="value">Αξία <span class="arr"></span></th>
-        <th data-k="signed">Υπογραφή <span class="arr"></span></th>
-        <th data-k="end">Λήγει <span class="arr"></span></th>
-        <th>ΑΔΑΜ</th>
-      </tr></thead>
-      <tbody id="body"></tbody>
-    </table>
-    <div class="empty" id="empty" style="display:none">Γράψε όνομα αναδόχου παραπάνω.</div>
-  </main>
+  <div class="split">
+    <div class="left">
+      <main class="list">
+        <table id="tbl">
+          <thead><tr>
+            <th data-k="holder">Ανάδοχος <span class="arr"></span></th>
+            <th data-k="org">Οργανισμός <span class="arr"></span></th>
+            <th data-k="service">Υπηρεσία <span class="arr"></span></th>
+            <th data-k="value">Αξία <span class="arr"></span></th>
+            <th data-k="signed">Υπογραφή <span class="arr"></span></th>
+            <th data-k="end">Λήγει <span class="arr"></span></th>
+          </tr></thead>
+          <tbody id="body"></tbody>
+        </table>
+        <div class="empty" id="empty" style="display:none">Χρησιμοποίησε το command bar: <b>CON &lt;όνομα&gt;</b></div>
+      </main>
+    </div>
+    <div class="right" id="detail">
+      <div class="detail-empty" id="detail-empty">
+        <div class="de-icon">◧</div>
+        <div>Κλικ σε σύμβαση αριστερά<br>για το πλήρες κείμενο εδώ.</div>
+      </div>
+      <div class="detail-head" id="detail-head" style="display:none">
+        <span class="dh-adam" id="dh-adam"></span>
+        <a class="dh-close" id="dh-close" title="Κλείσιμο">✕</a>
+      </div>
+      <iframe id="detail-frame" style="display:none"></iframe>
+      <div class="detail-missing" id="detail-missing" style="display:none">
+        <div class="dm-title">Το κείμενο δεν έχει δημιουργηθεί ακόμα</div>
+        <div class="dm-sub">Τρέξε το Contract Reader για αυτό το ΑΔΑΜ (μία φορά), και μετά ανοίγει εδώ αμέσως.</div>
+        <a class="dm-btn" id="dm-btn" target="_blank" rel="noopener">▶ Δημιουργία κειμένου</a>
+        <a class="dm-alt" id="dm-alt" target="_blank" rel="noopener">ή άνοιξε το πρωτότυπο PDF ↗</a>
+      </div>
+    </div>
+  </div>
 </div>
 <p class="foot">
   Πηγή: <b>data/contracts.jsonl</b> (η μνήμη του συστήματος, ανανεώνεται 2×/ημέρα από τον ingester).
@@ -256,14 +308,13 @@ function rowHTML(r){
     : (sc==='unverified'
         ? '<span class="tag-chk tag-warn" title="Ο τίτλος δεν επιβεβαιώνει την υπηρεσία — έλεγξε τη σύμβαση">⚠ προς επιβεβαίωση</span>'
         : '');
-  return '<tr'+(r.amendment?' class="is-amend"':'')+'>'+
+  return '<tr'+(r.amendment?' class="is-amend"':'')+' data-adam="'+(r.adam||'')+'">'+
     '<td class="holder">'+(r.holder||'')+'</td>'+
     '<td class="org">'+(r.org||'')+(r.region?' <span class="date">· '+r.region+'</span>':'')+'</td>'+
     '<td>'+(r.service?'<span class="service">'+r.service+'</span>':'')+amend+chk+'</td>'+
     '<td class="value">'+money(r.value)+'</td>'+
     '<td class="date">'+dmy(r.signed)+'</td>'+
-    '<td class="date">'+dmy(r.end)+'</td>'+
-    '<td class="adam">'+(r.adam?'<a class="doc" target="_blank" rel="noopener" href="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/'+r.adam+'">'+r.adam+' ↗</a>':'')+'</td>'+
+    '<td class="date">'+dmy(r.end)+(r.adam?' <span class="opencue">κείμενο →</span>':'')+'</td>'+
   '</tr>';
 }
 
@@ -349,6 +400,47 @@ function render(){
   dl.disabled = current.length===0;
 }
 qEl.addEventListener('input', render);
+
+// ── Split-view: click a row → open its contract text on the right ─────────
+const REPO_ACTIONS="https://github.com/delta-primecs/tender-monitor/actions/workflows/contract_reader.yml";
+const KHMDHS_PDF="https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract/attachment/";
+let selRow=null;
+body.addEventListener('click', (e)=>{
+  const tr=e.target.closest('tr[data-adam]');
+  if(!tr) return;
+  const adam=tr.getAttribute('data-adam');
+  if(!adam) return;
+  if(selRow) selRow.classList.remove('sel');
+  tr.classList.add('sel'); selRow=tr;
+  const deEmpty=document.getElementById('detail-empty'),
+        deHead=document.getElementById('detail-head'),
+        deFrame=document.getElementById('detail-frame'),
+        deMiss=document.getElementById('detail-missing');
+  deEmpty.style.display='none';
+  const url='contracts/'+adam+'.html';
+  fetch(url,{method:'HEAD'}).then(r=>{
+    deHead.style.display='flex';
+    document.getElementById('dh-adam').textContent=adam;
+    if(r.ok){
+      deFrame.style.display='block'; deMiss.style.display='none'; deFrame.src=url;
+    } else { showMiss(); }
+  }).catch(showMiss);
+  function showMiss(){
+    deHead.style.display='flex';
+    document.getElementById('dh-adam').textContent=adam;
+    deFrame.style.display='none';
+    deMiss.style.display='flex'; deMiss.style.flexDirection='column';
+    document.getElementById('dm-btn').href=REPO_ACTIONS;
+    document.getElementById('dm-alt').href=KHMDHS_PDF+adam;
+  }
+});
+document.getElementById('dh-close').addEventListener('click', ()=>{
+  document.getElementById('detail-head').style.display='none';
+  document.getElementById('detail-frame').style.display='none';
+  document.getElementById('detail-missing').style.display='none';
+  document.getElementById('detail-empty').style.display='flex';
+  if(selRow){selRow.classList.remove('sel');selRow=null;}
+});
 document.querySelectorAll('[data-grp]').forEach(b=>b.addEventListener('click',()=>{
   grpMode = b.dataset.grp;
   document.querySelectorAll('[data-grp]').forEach(x=>x.setAttribute('aria-pressed', x===b));
