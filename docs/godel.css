@@ -44,7 +44,7 @@ body{font-family:var(--mono)!important;-webkit-font-smoothing:antialiased}
 .nav-here .kbd{border-color:var(--accent);color:var(--accent)}
 
 /* ── Permanent top command bar (Gödel-style, always visible) ─ */
-#topcmd{max-width:1600px;margin:0 auto 8px;background:var(--panel);
+#topcmd{max-width:none;margin:0 auto 8px;background:var(--panel);
        border:1px solid var(--hair2);position:relative}
 .tc-row{display:flex;align-items:center;gap:10px;padding:10px 14px}
 .tc-prompt{color:var(--accent);font-family:var(--mono);font-weight:700;font-size:16px}
@@ -188,3 +188,9 @@ html[data-density="dense"] .desk{padding-top:7px!important;padding-bottom:7px!im
 html[data-density="dense"] .controls{padding-top:6px!important;padding-bottom:6px!important}
 html[data-density="dense"] h1{font-size:16px!important}
 html[data-density="dense"] .stat .n{font-size:17px!important}
+
+/* ── Full-width layout: fill the viewport, small edge padding ─────────────
+   Containers no longer cap at 1600px — they fill the screen (Gödel/Bloomberg
+   style). A modest side padding keeps content off the very edge. */
+body{padding-left:16px!important;padding-right:16px!important}
+.wrap,.nav,.foot,#topcmd{max-width:none!important;margin-left:0!important;margin-right:0!important}
