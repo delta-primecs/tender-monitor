@@ -90,7 +90,7 @@ TEMPLATE = r"""<!doctype html>
        line-height:1.45;padding:14px 12px 40px;-webkit-font-smoothing:antialiased;
        font-size:13px}
   .wrap{max-width:1100px;margin:0 auto}
-  .nav{max-width:1600px;margin:0 auto 8px;display:flex;gap:2px;font-size:12px;flex-wrap:wrap}
+  .nav{max-width:none;margin:0 auto 8px;display:flex;gap:2px;font-size:12px;flex-wrap:wrap}
   .nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);
          background:var(--panel);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
   .nav a:hover{color:var(--text);border-color:var(--hair-2)}
@@ -161,11 +161,11 @@ TEMPLATE = r"""<!doctype html>
   .date-ago{font-size:10px;color:var(--muted);margin-top:2px}
   .empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:13px}
   .empty b{color:var(--bright)}
-  .foot{max-width:1600px;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
+  .foot{max-width:none;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
   .foot b{color:var(--text)}
 
   /* Split-view */
-  .wrap{max-width:1600px}
+  .wrap{max-width:none}
   .split{display:flex;gap:2px;align-items:flex-start}
   .left{flex:1 1 46%;min-width:0}
   .right{flex:1 1 54%;position:sticky;top:12px;height:calc(100vh - 24px);
