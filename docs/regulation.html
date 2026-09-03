@@ -64,32 +64,27 @@
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="live-label">Regulation · ΕΑΔ + ΥΠΕΣ · Διαύγεια</div>
-    <h1>Regulatory Radar</h1>
-    <div class="sub">Εγκύκλιοι & γνωμοδοτήσεις που γεννούν υποχρεώσεις — η αφετηρία κάθε νέας σύμβασης</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="s-all">0</div><div class="l">Items</div></div>
-      <div class="stat"><div class="n" id="s-90">0</div><div class="l">Last 90 days</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">03/09/2026 09:38</div><div class="l">Updated</div></div>
-    </div>
-  </header>
-  <div class="controls">
-    <label class="search"><input id="q" type="search" placeholder="Αναζήτηση θέματος…"></label>
-    <div class="filters">
-      <span class="flabel">Φορέας</span>
+  <div class="deskbar">
+    <span class="db-title">REGULATORY RADAR</span>
+    <span class="db-sub">ΕΑΔ + ΥΠΕΣ · Διαύγεια</span>
+    <div class="db-filters">
       <div class="seg">
         <button data-org="all" aria-pressed="true">Όλοι</button>
         <button data-org="ΕΑΔ" aria-pressed="false">ΕΑΔ</button>
         <button data-org="ΥΠΕΣ" aria-pressed="false">ΥΠΕΣ</button>
       </div>
-      <span class="flabel">Διάστημα</span>
       <div class="seg">
-        <button data-win="90" aria-pressed="false">90 ημ.</button>
-        <button data-win="365" aria-pressed="false">1 έτος</button>
+        <button data-win="90" aria-pressed="false">90ημ</button>
+        <button data-win="365" aria-pressed="false">1έτος</button>
         <button data-win="0" aria-pressed="true">Όλα</button>
       </div>
     </div>
+    <div class="db-stats">
+      <span><b id="s-all">0</b> items</span>
+      <span><b id="s-90">0</b> /90ημ</span>
+      <span class="db-stamp">03/09/2026 10:41</span>
+    </div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
   </div>
   <main class="list" id="list"></main>
   <div class="empty" id="empty" style="display:none"></div>
