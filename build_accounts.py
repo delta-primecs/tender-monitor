@@ -425,36 +425,31 @@ TEMPLATE = r"""<!doctype html>
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="live-label">Accounts · ΚΗΜΔΗΣ</div>
-    <h1>Account Map</h1>
-    <div class="sub">Τι έχει αγοράσει κάθε φορέας, από ποιον, πότε λήγει — και τι δεν έχει αγοράσει ποτέ</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="s-org">0</div><div class="l">Φορείς</div></div>
-      <div class="stat"><div class="n hot" id="s-now">0</div><div class="l">Call now (≤30 ημ.)</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">__STAMP__</div><div class="l">Δεδομένα έως</div></div>
+  <div class="deskbar">
+    <span class="db-title">ACCOUNT MAP</span>
+    <span class="db-sub">ΚΗΜΔΗΣ</span>
+    <div class="db-filters">
+      <div class="seg" id="seg-gap"></div>
+      <div class="seg">
+        <button data-win="30" aria-pressed="false">30ημ</button>
+        <button data-win="90" aria-pressed="false">90ημ</button>
+        <button data-win="0" aria-pressed="true">Όλα</button>
+      </div>
+      <div class="seg">
+        <button data-fresh="all" aria-pressed="true">Όλα</button>
+        <button data-fresh="stable" aria-pressed="false">Χωρίς ανανέωση</button>
+      </div>
     </div>
-  </header>
+    <div class="db-stats">
+      <span><b id="s-org">0</b> φορείς</span>
+      <span><b class="hot" id="s-now">0</b> call ≤30ημ</span>
+      <span class="db-stamp">__STAMP__</span>
+    </div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
+  </div>
   <div class="verify-banner">
     ⚠ <b>Πριν καλέσεις, επιβεβαίωσε.</b> Τα δεδομένα ΚΗΜΔΗΣ ανανεώνονται ~καθημερινά και μια απευθείας ανάθεση μπορεί να υπογραφεί οποτεδήποτε.
     Κάθε κάρτα δείχνει την <b>πιο πρόσφατη σύμβαση</b> και σύνδεσμο ελέγχου — πάτησέ τον πριν σηκώσεις το τηλέφωνο.
-  </div>
-  <div class="controls">
-    <label class="search"><input id="q" type="search" placeholder="Αναζήτηση — φορέας, περιοχή, ανάδοχος, υπογράφων…"></label>
-    <div class="filters">
-      <span class="flabel">Λείπει</span><div class="seg" id="seg-gap"></div>
-      <span class="flabel">Call by</span>
-      <div class="seg">
-        <button data-win="30" aria-pressed="false">30 ημ.</button>
-        <button data-win="90" aria-pressed="false">90 ημ.</button>
-        <button data-win="0" aria-pressed="true">Όλα</button>
-      </div>
-      <span class="flabel">Κατάσταση</span>
-      <div class="seg">
-        <button data-fresh="all" aria-pressed="true">Όλα</button>
-        <button data-fresh="stable" aria-pressed="false">Χωρίς πρόσφατη ανανέωση</button>
-      </div>
-    </div>
   </div>
   <main class="list" id="list"></main>
   <div class="empty" id="empty">Κανένας φορέας δεν ταιριάζει.</div>
