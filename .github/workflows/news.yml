@@ -3,7 +3,7 @@ name: Build News
 on:
   workflow_dispatch:
   schedule:
-    - cron: "41 4,17 * * *"   # twice daily, ~30 min after ingest (07:41 & 20:41 Athens)
+    - cron: "*/30 * * * *"   # every 30 minutes
 
 permissions:
   contents: write
