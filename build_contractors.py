@@ -177,21 +177,20 @@ TEMPLATE = r"""<!doctype html>
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="live-label">Contractors · ΚΗΜΔΗΣ</div>
-    <h1>Contractors</h1>
-    <div class="sub">Πληκτρολόγησε όνομα αναδόχου — δες κάθε σύμβαση που έχει υπογράψει · κατέβασε σε CSV/Excel</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="s-rows">0</div><div class="l">Contracts shown</div></div>
-      <div class="stat"><div class="n" id="s-sum">0 €</div><div class="l">Total value shown</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">__STAMP__</div><div class="l">Δεδομένα έως</div></div>
+  <div class="deskbar">
+    <span class="db-title">CONTRACTORS</span>
+    <span class="db-sub">ΚΗΜΔΗΣ</span>
+    <div class="db-filters">
+      <button id="dl" class="btn" disabled>Download CSV</button>
+      <button id="dl90" class="btn" title="Συμβάσεις που λήγουν στις επόμενες 90 ημέρες — hit list">⬇ Λήξεις 90ημ</button>
+      <span class="hint-cmd">αναζήτηση: <b>CON &lt;όνομα&gt;</b></span>
     </div>
-  </header>
-  <div class="controls">
+    <div class="db-stats">
+      <span><b id="s-rows">0</b> συμβ.</span>
+      <span><b id="s-sum">0 €</b></span>
+      <span class="db-stamp">__STAMP__</span>
+    </div>
     <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
-    <span class="hint-cmd">Αναζήτηση: <b>CON &lt;όνομα&gt;</b> από τη γραμμή εντολών</span>
-    <button id="dl" class="btn" disabled>Download CSV</button>
-    <button id="dl90" class="btn" title="Κατέβασε λίστα με όλες τις συμβάσεις που λήγουν στις επόμενες 90 ημέρες — hit list για τηλεφωνήματα">⬇ Λήξεις 90 ημ.</button>
   </div>
   <section id="profile" class="profile" style="display:none">
     <div class="profile-head">
