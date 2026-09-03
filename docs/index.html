@@ -92,44 +92,32 @@
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="top"><span class="dot" aria-hidden="true"></span><span class="live-label">Live · ΚΗΜΔΗΣ + ΕΣΗΔΗΣ</span></div>
-    <h1>Tender Radar</h1>
-    <div class="sub">Ανοιχτοί δημόσιοι διαγωνισμοί</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Εμφανίζονται</div></div>
-      <div class="stat"><div class="n hot" id="stat-closing">0</div><div class="l">Closing ≤ 3 days</div></div>
-      <div class="stat"><div class="n" style="font-size:16px">03/09 · 09:43</div><div class="l">Ενημερώθηκε</div></div>
-    </div>
-  </header>
-  <div class="controls top">
-    <label class="search">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="q" type="search" placeholder="Αναζήτηση — δήμος, νοσοκομείο, λέξη-κλειδί, ΑΔΑΜ…" aria-label="Αναζήτηση διαγωνισμών">
-    </label>
-  </div>
-  <div class="controls filters">
-    <div class="fgroup"><span class="flabel">Area</span><div class="seg" id="seg-cat" role="group" aria-label="Category"></div></div>
-    <div class="fgroup"><span class="flabel">Type</span>
-      <div class="seg" role="group" aria-label="Procedure">
+  <div class="deskbar">
+    <span class="db-title">TENDER RADAR</span>
+    <span class="db-sub">ΚΗΜΔΗΣ + ΕΣΗΔΗΣ · open</span>
+    <div class="db-filters">
+      <div class="seg" id="seg-cat" role="group" aria-label="Category"></div>
+      <div class="seg">
         <button data-proc="all" aria-pressed="true">Όλα</button>
-        <button data-proc="competition" aria-pressed="false">Competitions</button>
-        <button data-proc="direct" aria-pressed="false">Direct</button>
+        <button data-proc="competition" aria-pressed="false">Διαγων.</button>
+        <button data-proc="direct" aria-pressed="false">Απευθ.</button>
       </div>
-    </div>
-    <div class="fgroup"><span class="flabel">Min €</span>
-      <div class="seg" role="group" aria-label="Minimum value">
-        <button data-min="0" aria-pressed="true">Οποιαδήποτε</button>
+      <div class="seg">
+        <button data-min="0" aria-pressed="true">€ όλα</button>
         <button data-min="10000" aria-pressed="false">10k+</button>
         <button data-min="30000" aria-pressed="false">30k+</button>
       </div>
-    </div>
-    <div class="fgroup"><span class="flabel">Ταξινόμηση</span>
-      <div class="seg" role="group" aria-label="Sort">
-        <button data-sort="deadline" aria-pressed="true">Closing</button>
+      <div class="seg">
+        <button data-sort="deadline" aria-pressed="true">Λήξη</button>
         <button data-sort="value" aria-pressed="false">Αξία</button>
       </div>
     </div>
+    <div class="db-stats">
+      <span><b id="stat-shown">0</b> εμφαν.</span>
+      <span><b class="hot" id="stat-closing">0</b> ≤3ημ</span>
+      <span class="db-stamp">03/09 · 12:34</span>
+    </div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
   </div>
   <main class="list" id="list"></main>
   <div class="empty" id="empty">Καμία εγγραφή δεν ταιριάζει με τα φίλτρα.</div>
