@@ -165,8 +165,8 @@ TEMPLATE = r"""<!doctype html>
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:var(--mono);
        line-height:1.5;-webkit-font-smoothing:antialiased;padding:14px 12px 40px;font-size:13px}
-  .wrap{max-width:1600px;margin:0 auto}
-  .nav{max-width:1600px;margin:0 auto 8px}
+  .wrap{max-width:none;margin:0 auto}
+  .nav{max-width:none;margin:0 auto 8px}
   .desk{background:var(--panel);color:var(--text);border:1px solid var(--hair);
        padding:14px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative}
   .top{display:flex;align-items:center;gap:8px}
@@ -226,7 +226,7 @@ TEMPLATE = r"""<!doctype html>
   .open{font-size:12px;color:var(--link);font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:auto}
   .row:hover .open{text-decoration:underline}
   .empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:13px;display:none}
-  .foot{max-width:1600px;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
+  .foot{max-width:none;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
   .foot b{color:var(--text);font-weight:600}
   @media (max-width:520px){h1{font-size:16px}.readout{gap:16px}.open{margin-left:0}}
 </style>
