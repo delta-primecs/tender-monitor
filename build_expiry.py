@@ -224,39 +224,29 @@ TEMPLATE = r"""<!doctype html>
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="top"><span class="dot" aria-hidden="true"></span><span class="live-label">Contracts · ΚΗΜΔΗΣ</span></div>
-    <h1>Contract Expiry Radar</h1>
-    <div class="sub">Running contracts and when they end — reach the client before the re-tender</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="stat-shown">0</div><div class="l">Εμφανίζονται</div></div>
-      <div class="stat"><div class="n hot" id="stat-soon">0</div><div class="l">Ending ≤ 90 days</div></div>
-      <div class="stat"><div class="n" style="font-size:16px">__STAMP__</div><div class="l">Ενημερώθηκε</div></div>
-    </div>
-  </header>
-  <div class="controls top">
-    <label class="search">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="q" type="search" placeholder="Αναζήτηση — φορέας, ανάδοχος, λέξη-κλειδί…" aria-label="Αναζήτηση συμβάσεων">
-    </label>
-  </div>
-  <div class="controls filters">
-    <div class="fgroup"><span class="flabel">Λήγει εντός</span>
-      <div class="seg" role="group" aria-label="Time window">
-        <button data-win="90" aria-pressed="false">3 mo</button>
-        <button data-win="180" aria-pressed="false">6 mo</button>
-        <button data-win="365" aria-pressed="false">12 mo</button>
+  <div class="deskbar">
+    <span class="db-title">EXPIRY RADAR</span>
+    <span class="db-sub">ΚΗΜΔΗΣ · running</span>
+    <div class="db-filters">
+      <div class="seg">
+        <button data-win="90" aria-pressed="false">3μ</button>
+        <button data-win="180" aria-pressed="false">6μ</button>
+        <button data-win="365" aria-pressed="false">12μ</button>
         <button data-win="0" aria-pressed="true">Όλα</button>
       </div>
-    </div>
-    <div class="fgroup"><span class="flabel">Area</span><div class="seg" id="seg-cat" role="group" aria-label="Category"></div></div>
-    <div class="fgroup"><span class="flabel">Min €</span>
-      <div class="seg" role="group" aria-label="Minimum value">
-        <button data-min="0" aria-pressed="true">Οποιαδήποτε</button>
+      <div class="seg" id="seg-cat" role="group" aria-label="Category"></div>
+      <div class="seg">
+        <button data-min="0" aria-pressed="true">€ όλα</button>
         <button data-min="10000" aria-pressed="false">10k+</button>
         <button data-min="30000" aria-pressed="false">30k+</button>
       </div>
     </div>
+    <div class="db-stats">
+      <span><b id="stat-shown">0</b> εμφαν.</span>
+      <span><b class="hot" id="stat-soon">0</b> ≤90ημ</span>
+      <span class="db-stamp">__STAMP__</span>
+    </div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
   </div>
   <main class="list" id="list"></main>
   <div class="empty" id="empty">No contracts match these filters.</div>
