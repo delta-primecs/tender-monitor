@@ -201,34 +201,28 @@ TEMPLATE = r"""<!doctype html>
 <div id="nav"></div>
 <script src="nav.js"></script>
 <div class="wrap">
-  <header class="desk">
-    <div class="live-label">Live feed · ΚΗΜΔΗΣ</div>
-    <h1>What changed</h1>
-    <div class="sub">Ανανεώσεις & νέες συμβάσεις στους τομείς σου — μόλις εμφανιστούν</div>
-    <div class="readout">
-      <div class="stat"><div class="n" id="s-all">0</div><div class="l">Events</div></div>
-      <div class="stat"><div class="n hot" id="s-renew">0</div><div class="l">Renewals</div></div>
-      <div class="stat"><div class="n" style="font-size:15px">__STAMP__</div><div class="l">Updated</div></div>
-    </div>
-  </header>
-  <div class="controls">
-    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
-    <span class="hint-cmd">Αναζήτηση: <b>CHG &lt;όρος&gt;</b> από τη γραμμή εντολών</span>
-    <div class="filters">
-      <span class="flabel">Τύπος</span>
+  <div class="deskbar">
+    <span class="db-title">WHAT CHANGED</span>
+    <span class="db-sub">ΚΗΜΔΗΣ · live feed</span>
+    <div class="db-filters">
       <div class="seg">
         <button data-ev="all" aria-pressed="true">Όλα</button>
         <button data-ev="RENEWAL" aria-pressed="false">Ανανεώσεις</button>
         <button data-ev="NEW" aria-pressed="false">Νέες</button>
       </div>
-      <span class="flabel">Τομέας</span><div class="seg" id="seg-svc"></div>
-      <span class="flabel">Διάστημα</span>
+      <div class="seg" id="seg-svc"></div>
       <div class="seg">
-        <button data-win="7" aria-pressed="false">7 ημ.</button>
-        <button data-win="30" aria-pressed="false">30 ημ.</button>
+        <button data-win="7" aria-pressed="false">7ημ</button>
+        <button data-win="30" aria-pressed="false">30ημ</button>
         <button data-win="0" aria-pressed="true">Όλα</button>
       </div>
     </div>
+    <div class="db-stats">
+      <span><b id="s-all">0</b> events</span>
+      <span><b class="hot" id="s-renew">0</b> renewals</span>
+      <span class="db-stamp">__STAMP__</span>
+    </div>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
   </div>
   <div class="split">
     <div class="left">
