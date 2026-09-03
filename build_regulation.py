@@ -168,8 +168,8 @@ TEMPLATE = r"""<!doctype html>
   }
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--page);color:var(--text);font-family:var(--mono);line-height:1.5;padding:24px 16px 56px;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1600px;margin:0 auto}
-  .nav{max-width:1600px;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
+  .wrap{max-width:none;margin:0 auto}
+  .nav{max-width:none;margin:0 auto 12px;display:flex;gap:8px;font-size:13px;flex-wrap:wrap}
   .nav a{text-decoration:none;color:var(--muted);padding:6px 12px;border:1px solid var(--hair);border-radius:8px;background:var(--card)}
   .nav a.on{background:var(--ink);color:#fff;border-color:var(--ink)}
   .desk{background:var(--panel);color:var(--text);border:1px solid var(--hair);padding:22px 24px 20px}
@@ -203,7 +203,7 @@ TEMPLATE = r"""<!doctype html>
   .date{font-size:12px;color:var(--muted);white-space:nowrap;margin-top:2px}
   .empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:14px}
   .empty b{color:var(--text)}
-  .foot{max-width:1600px;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
+  .foot{max-width:none;margin:16px auto 0;color:var(--muted);font-size:12.5px;line-height:1.55}
   .foot b{color:var(--text)}
 </style>
 </head>
