@@ -39,10 +39,30 @@
       '<span class="tc-prompt">&gt;</span>' +
       '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
       'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   EXP σοφαδων">' +
+      '<button id="densbtn" class="tc-dens" title="Πυκνότητα εμφάνισης">◧ Πυκνότητα</button>' +
       '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
     nav.parentNode.insertBefore(bar, nav);
+
+    // Density toggle — cycles comfortable → compact → dense, remembered.
+    const DENS = ["comfortable", "compact", "dense"];
+    const DENS_LABEL = { comfortable: "◧ Άνετο", compact: "▤ Συμπαγές", dense: "▦ Πυκνό" };
+    function applyDensity(d) {
+      document.documentElement.setAttribute("data-density", d);
+      const b = document.getElementById("densbtn");
+      if (b) b.textContent = DENS_LABEL[d] || DENS_LABEL.comfortable;
+      try { localStorage.setItem("tr_density", d); } catch (e) {}
+    }
+    let curDens = "comfortable";
+    try { curDens = localStorage.getItem("tr_density") || "comfortable"; } catch (e) {}
+    applyDensity(curDens);
+    const db = document.getElementById("densbtn");
+    if (db) db.addEventListener("click", (e) => {
+      e.preventDefault();
+      const i = DENS.indexOf(document.documentElement.getAttribute("data-density") || "comfortable");
+      applyDensity(DENS[(i + 1) % DENS.length]);
+    });
 
     const input = document.getElementById("tcinput");
     input.addEventListener("input", () => renderTopSuggestions(input.value.trim()));
