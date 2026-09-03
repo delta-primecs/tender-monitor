@@ -116,6 +116,8 @@ TEMPLATE = r"""<!doctype html>
   .stat .n.hot{color:var(--red)}
 
   /* Controls strip */
+  .hint-cmd{font-size:11px;color:var(--muted)}
+  .hint-cmd b{color:var(--accent)}
   .controls{background:var(--panel);border:1px solid var(--hair);border-top:0;padding:10px 16px}
   .search input{width:100%;padding:8px 10px;border:1px solid var(--hair-2);background:var(--page);
         font:inherit;font-size:13px;color:var(--text);font-family:var(--mono)}
@@ -210,7 +212,8 @@ TEMPLATE = r"""<!doctype html>
     </div>
   </header>
   <div class="controls">
-    <label class="search"><input id="q" type="search" placeholder="Αναζήτηση — φορέας, ανάδοχος…"></label>
+    <input id="q" type="search" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
+    <span class="hint-cmd">Αναζήτηση: <b>CHG &lt;όρος&gt;</b> από τη γραμμή εντολών</span>
     <div class="filters">
       <span class="flabel">Τύπος</span>
       <div class="seg">
