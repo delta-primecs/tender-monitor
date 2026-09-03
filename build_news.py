@@ -150,17 +150,25 @@ TEMPLATE = r"""<!doctype html>
   .controls input{width:100%;padding:8px 10px;border:1px solid var(--hair2);background:var(--page);
         color:var(--text);font-family:var(--mono);font-size:13px}
   .list{background:var(--card);border:1px solid var(--hair);border-top:0}
-  .item{padding:11px 16px;border-top:1px solid var(--hair);display:flex;gap:14px;align-items:baseline}
-  .item:first-child{border-top:0}
-  .item:nth-child(even){background:var(--panel-2)}
-  .item:hover{background:#161d28}
-  .src{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;
-       white-space:nowrap;min-width:120px;font-weight:700}
-  .body{flex:1;min-width:0}
-  .ttl{font-size:14px;color:var(--bright);text-decoration:none;font-weight:500}
-  .ttl:hover{color:var(--accent);text-decoration:underline}
-  .sum{font-size:12px;color:var(--muted);margin-top:3px}
-  .when{font-size:11px;color:var(--muted);white-space:nowrap;text-align:right;min-width:80px}
+  .newshead{display:flex;gap:16px;align-items:center;padding:7px 16px;
+    background:#0c1219;border-bottom:1px solid var(--hair2);
+    font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .newsrow{display:flex;gap:16px;align-items:center;padding:8px 16px;
+    border-top:1px solid var(--hair);text-decoration:none;color:inherit}
+  .newsrow:first-of-type{border-top:0}
+  .newsrow:nth-child(even){background:var(--panel-2)}
+  .newsrow:hover{background:#161d28}
+  /* Column widths: headline flexes, the rest fixed */
+  .nh-ttl,.nr-ttl{flex:1;min-width:0}
+  .nh-date,.nr-date{width:78px;flex:none;text-align:right}
+  .nh-time,.nr-time{width:52px;flex:none;text-align:right}
+  .nh-src,.nr-src{width:150px;flex:none}
+  .nr-ttl{font-size:13.5px;color:var(--bright);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .newsrow:hover .nr-ttl{color:var(--accent)}
+  .nr-date,.nr-time{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .nr-src{font-size:10px;color:var(--accent);text-transform:uppercase;
+    letter-spacing:.05em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .empty{padding:40px;text-align:center;color:var(--muted)}
   .foot{max-width:none;margin:12px auto 0;color:var(--muted);font-size:11px;line-height:1.6}
 </style></head><body>
@@ -189,23 +197,25 @@ TEMPLATE = r"""<!doctype html>
 <script>
 const ITEMS = __DATA__;
 const listEl=document.getElementById('list'), emptyEl=document.getElementById('empty'), qEl=document.getElementById('q');
-function ago(ts){
-  if(!ts) return '';
-  const d=Math.floor((Date.now()/1000 - ts)/86400);
-  if(d<=0) return 'σήμερα'; if(d===1) return 'χθες'; return 'πριν '+d+' ημ.';
-}
+function pad(n){return String(n).padStart(2,'0');}
+function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts*1000);
+  return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2); }
+function fmtTime(ts){ if(!ts) return '—'; const d=new Date(ts*1000);
+  return pad(d.getHours())+':'+pad(d.getMinutes()); }
 function render(){
   const q=(qEl.value||'').trim().toLowerCase();
   const rows = q ? ITEMS.filter(i=>((i.title||'')+' '+(i.summary||'')+' '+(i.source||'')).toLowerCase().includes(q)) : ITEMS;
-  listEl.innerHTML='';
-  rows.slice(0,300).forEach(i=>{
-    const el=document.createElement('div'); el.className='item';
-    el.innerHTML='<span class="src">'+(i.source||'')+'</span>'+
-      '<div class="body"><a class="ttl" href="'+i.link+'" target="_blank" rel="noopener">'+i.title+'</a>'+
-      (i.summary?'<div class="sum">'+i.summary+'</div>':'')+'</div>'+
-      '<span class="when">'+ago(i.ts)+'</span>';
-    listEl.appendChild(el);
+  let html='<div class="newshead"><span class="nh-ttl">Τίτλος</span><span class="nh-date">Ημ/νία</span><span class="nh-time">Ώρα</span><span class="nh-src">Πηγή</span></div>';
+  rows.slice(0,400).forEach(i=>{
+    const safe=(i.title||'').replace(/"/g,'&quot;');
+    html+='<a class="newsrow" href="'+i.link+'" target="_blank" rel="noopener">'+
+      '<span class="nr-ttl" title="'+safe+'">'+(i.title||'')+'</span>'+
+      '<span class="nr-date">'+fmtDate(i.ts)+'</span>'+
+      '<span class="nr-time">'+fmtTime(i.ts)+'</span>'+
+      '<span class="nr-src">'+(i.source||'')+'</span>'+
+      '</a>';
   });
+  listEl.innerHTML=html;
   emptyEl.style.display = rows.length? 'none':'block';
   emptyEl.textContent = rows.length? '' : 'Καμία είδηση δεν ταιριάζει.';
 }
