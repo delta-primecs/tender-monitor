@@ -1,10 +1,10 @@
 """
-build_news.py — Τοπική Αυτοδιοίκηση news feed (Gödel terminal style).
+build_news.py - Τοπική Αυτοδιοίκηση news feed (Godel terminal style).
 
 Pulls RSS from Greek local-government news sites, merges + dedupes, sorts
 newest first, renders docs/news.html. Optional in-page search filters live.
 
-Defensive by design: if a feed is down or malformed, it's skipped — the page
+Defensive by design: if a feed is down or malformed, it's skipped - the page
 still builds from whatever feeds responded. No keyword filtering (user reads
 with the eye); a search box is provided for optional narrowing.
 
@@ -19,11 +19,11 @@ from datetime import datetime, timezone
 
 import feedparser
 
-# ── Sources ───────────────────────────────────────────────────────────────
-# All WordPress-based local-gov news portals → standard /feed/ RSS.
+# -- Sources ---------------------------------------------------------------
+# All WordPress-based local-gov news portals -> standard /feed/ RSS.
 # Add/remove freely; a dead feed is skipped, never breaks the build.
 FEEDS = [
-    # Τοπική Αυτοδιοίκηση — ποιος Δήμος κινείται (κρατάμε τις 2 ισχυρότερες)
+    # Τοπική Αυτοδιοίκηση - ποιος Δήμος κινείται (κρατάμε τις 2 ισχυρότερες)
     ("Αυτοδιοίκηση", "https://www.aftodioikisi.gr/feed/"),
     ("Airetos",      "https://airetos.gr/feed/"),
 
@@ -49,7 +49,7 @@ TIMEOUT      = 20      # feedparser has no direct timeout; we guard via socket
 
 def fetch_feed(name, url):
     """Return list of normalized items. Never raises. Tolerant of non-standard
-    XML (e.g. Taxheaven custom feeds) — needs only a title to keep an item."""
+    XML (e.g. Taxheaven custom feeds) - needs only a title to keep an item."""
     items = []
     try:
         import socket
@@ -64,7 +64,7 @@ def fetch_feed(name, url):
                 continue
             # link: standard, else guid/id, else the feed url as fallback
             link = (e.get("link") or e.get("id") or e.get("guid") or url).strip()
-            # published time → epoch for sorting (check several possible fields)
+            # published time -> epoch for sorting (check several possible fields)
             ts = 0
             for key in ("published_parsed", "updated_parsed", "created_parsed", "date_parsed"):
                 if e.get(key):
@@ -92,7 +92,7 @@ def strip_html(s):
 
 
 def main():
-    print("Fetching news feeds …")
+    print("Fetching news feeds ...")
     all_items = []
     for name, url in FEEDS:
         all_items.extend(fetch_feed(name, url))
@@ -179,7 +179,7 @@ TEMPLATE = r"""<!doctype html>
   <div class="empty" id="empty" style="display:none"></div>
   <div class="foot">
     Πηγές τοπικής αυτοδιοίκησης · ανανέωση 2×/ημέρα · κάθε τίτλος ανοίγει στην πηγή.<br>
-    Δεν φιλτράρεται αυτόματα — χρησιμοποίησε το πεδίο αναζήτησης για στόχευση.
+    Δεν φιλτράρεται αυτόματα - χρησιμοποίησε το πεδίο αναζήτησης για στόχευση.
   </div>
 </div>
 <script src="godel.css"></script>
