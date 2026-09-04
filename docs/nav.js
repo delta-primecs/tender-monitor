@@ -9,6 +9,7 @@
     { key: "5", href: "regulation.html",  label: "Regulatory radar", code: "REG"  },
     { key: "6", href: "contractors.html", label: "Contractors",      code: "CON"  },
     { key: "7", href: "news.html",        label: "NEWS",              code: "NEWS" },
+    { key: "8", href: "chat.html",         label: "Chat",              code: "CHAT" },
   ];
 
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
