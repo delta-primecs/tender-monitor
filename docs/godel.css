@@ -257,3 +257,8 @@ body{padding-left:16px!important;padding-right:16px!important}
   font-size:14px;padding:0 12px;cursor:pointer}
 .cw-compose button:hover{background:var(--accent);color:var(--page)}
 @media(max-width:480px){.cw-panel{width:calc(100vw - 36px)}}
+
+/* ── Freshness indicator (data age dot in the deskbar stamp) ─────────────── */
+.fresh-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+  margin-right:6px;vertical-align:middle}
+.fresh-lab{font-weight:700;font-size:10px;letter-spacing:.03em}
