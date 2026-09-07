@@ -2,7 +2,7 @@ name: Build Regulatory Radar
 
 on:
   schedule:
-    - cron: "51 4,17 * * *"   # twice daily, aligned with ingester window
+    - cron: "38 2,4,17 * * *"   # ~25 min after ingest
   workflow_dispatch:
 
 permissions:
