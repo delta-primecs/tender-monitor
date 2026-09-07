@@ -3,7 +3,7 @@ name: Build Account Map
 on:
   schedule:
     # Staggered away from the other workflows and off the busy top-of-hour slots.
-    - cron: "43 4,17 * * *"   # ~30 min after ingest — heavy, reads live API
+    - cron: "33 2,4,17 * * *"   # ~20 min after ingest (heavy)
   workflow_dispatch:
 
 permissions:
