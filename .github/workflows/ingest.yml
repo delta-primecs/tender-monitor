@@ -2,7 +2,7 @@ name: Ingest Contracts
 
 on:
   schedule:
-    - cron: "11 4,17 * * *"   # twice daily (07:11 & 20:11 Athens) — everything reads from this
+    - cron: "11 2,4,17 * * *"   # 3x: 05:11 & 07:11 & 20:11 Athens - fresh before you start
   workflow_dispatch:
 
 permissions:
