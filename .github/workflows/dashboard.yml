@@ -2,7 +2,7 @@ name: Build Tender Dashboard
 
 on:
   schedule:
-    - cron: "0 5,18 * * *"   # twice daily (was hourly — pointless since ΚΗΜΔΗΣ updates daily)
+    - cron: "48 2,4,17 * * *"   # ~35 min after ingest
   workflow_dispatch:       # lets you press "Run workflow" to build it on demand
 
 permissions:
