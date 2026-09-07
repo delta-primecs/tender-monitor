@@ -346,6 +346,127 @@
       const s = document.querySelector('input[type="search"], #q');
       if (s) { s.value = q; s.dispatchEvent(new Event("input", { bubbles: true })); }
     }
+    initChatWidget();
+  }
+
+  // ── Floating chat widget (every page except the full chat page) ──────────
+  function initChatWidget() {
+    const onChatPage = here() === "chat.html";
+    if (onChatPage) return;               // full page already shows chat
+    if (document.getElementById("cw")) return;
+
+    const cw = document.createElement("div");
+    cw.id = "cw";
+    cw.innerHTML =
+      '<button id="cw-bubble" title="Chat ομάδας">' +
+        '<span class="cw-ic">💬</span><span class="cw-badge" id="cw-badge" style="display:none">0</span>' +
+      '</button>' +
+      '<div class="cw-panel" id="cw-panel" style="display:none">' +
+        '<div class="cw-head"><span>CHAT · Ομάδα</span>' +
+          '<a class="cw-full" href="chat.html" title="Πλήρης οθόνη">⤢</a>' +
+          '<span class="cw-x" id="cw-x" title="Κλείσιμο">✕</span></div>' +
+        '<div class="cw-msgs" id="cw-msgs"></div>' +
+        '<div class="cw-compose"><input id="cw-input" type="text" maxlength="2000" ' +
+          'placeholder="Μήνυμα…" autocomplete="off"><button id="cw-send">➤</button></div>' +
+      '</div>';
+    document.body.appendChild(cw);
+
+    const bubble = document.getElementById("cw-bubble");
+    const panel = document.getElementById("cw-panel");
+    const badge = document.getElementById("cw-badge");
+    const msgs = document.getElementById("cw-msgs");
+    const input = document.getElementById("cw-input");
+
+    let seen = new Set();
+    let myName = null;
+    let unread = 0;
+    let open = false;
+    let firstLoad = true;
+
+    const pad = n => String(n).padStart(2, "0");
+    const fmtTime = ts => { const d = new Date(ts); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+    const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    function beep() {
+      try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.connect(g); g.connect(ac.destination);
+        o.frequency.value = 660; g.gain.value = 0.05;
+        o.start(); o.stop(ac.currentTime + 0.12);
+      } catch (e) {}
+    }
+
+    function addMsg(m) {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      const isMe = myName && m.name === myName;
+      const el = document.createElement("div");
+      el.className = "cw-msg" + (isMe ? " me" : "");
+      el.innerHTML = '<span class="cw-who">' + esc(m.name) + '</span>' +
+        '<span class="cw-txt">' + esc(m.text) + '</span>' +
+        '<span class="cw-tm">' + fmtTime(m.ts) + '</span>';
+      msgs.appendChild(el);
+      return !isMe;   // returns true if it's from someone else (for unread)
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch("/api/chat", { cache: "no-store" });
+        const d = await r.json();
+        if (!d.ok) return;
+        const atBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 60;
+        let newFromOthers = 0;
+        d.messages.forEach(m => { if (addMsg(m)) newFromOthers++; });
+        if (atBottom) msgs.scrollTop = msgs.scrollHeight;
+        // notify only after the first load (don't beep for history)
+        if (!firstLoad && newFromOthers > 0 && !open) {
+          unread += newFromOthers;
+          badge.textContent = unread;
+          badge.style.display = "block";
+          bubble.classList.add("pulse");
+          beep();
+        }
+        firstLoad = false;
+      } catch (e) {}
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      try {
+        const r = await fetch("/api/chat", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          if (!myName) myName = d.message.name;
+          addMsg(d.message);
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+      } catch (e) {}
+    }
+
+    bubble.addEventListener("click", () => {
+      open = !open;
+      panel.style.display = open ? "flex" : "none";
+      if (open) {
+        unread = 0; badge.style.display = "none";
+        bubble.classList.remove("pulse");
+        msgs.scrollTop = msgs.scrollHeight;
+        input.focus();
+      }
+    });
+    document.getElementById("cw-x").addEventListener("click", (e) => {
+      e.stopPropagation(); open = false; panel.style.display = "none";
+    });
+    document.getElementById("cw-send").addEventListener("click", send);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); send(); } });
+
+    poll();
+    setInterval(poll, 5000);
   }
 
   if (document.readyState === "loading") {
