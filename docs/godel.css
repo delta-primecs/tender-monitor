@@ -218,3 +218,42 @@ body{padding-left:16px!important;padding-right:16px!important}
 .deskbar .seg button:hover{color:var(--text)}
 .deskbar .seg button[aria-pressed="true"]{background:var(--accent-dim);color:var(--accent)}
 @media(max-width:760px){.db-sub,.db-stamp{display:none}.db-stats{margin-left:0}}
+
+/* ── Floating chat widget (bottom-right, every page) ─────────────────────── */
+#cw{position:fixed;right:18px;bottom:18px;z-index:9998;font-family:var(--mono)}
+#cw-bubble{position:relative;width:52px;height:52px;border-radius:50%;
+  background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);
+  font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#cw-bubble:hover{background:var(--accent);color:var(--page)}
+#cw-bubble.pulse{animation:cwpulse 1.5s infinite}
+@keyframes cwpulse{0%,100%{box-shadow:0 4px 16px rgba(0,0,0,.5)}
+  50%{box-shadow:0 0 0 6px rgba(61,220,132,.25),0 4px 16px rgba(0,0,0,.5)}}
+.cw-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;
+  border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 5px}
+.cw-panel{position:absolute;right:0;bottom:62px;width:340px;height:440px;
+  background:var(--panel);border:1px solid var(--accent);
+  box-shadow:0 8px 32px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+.cw-head{display:flex;align-items:center;gap:10px;padding:9px 12px;
+  background:#0c1219;border-bottom:1px solid var(--hair);
+  font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+.cw-full{margin-left:auto;color:var(--muted);text-decoration:none;font-size:14px;cursor:pointer}
+.cw-full:hover{color:var(--accent)}
+.cw-x{color:var(--muted);cursor:pointer;font-size:13px}
+.cw-x:hover{color:var(--red)}
+.cw-msgs{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.cw-msg{display:flex;gap:8px;align-items:baseline;font-size:12.5px;padding:2px 0}
+.cw-who{color:var(--accent);font-weight:700;font-size:11px;min-width:60px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-msg.me .cw-who{color:var(--link)}
+.cw-txt{flex:1;color:var(--text);word-break:break-word}
+.cw-tm{color:var(--muted);font-size:9.5px;white-space:nowrap}
+.cw-compose{display:flex;gap:6px;padding:8px;border-top:1px solid var(--hair);background:var(--panel)}
+.cw-compose input{flex:1;background:var(--page);border:1px solid var(--hair2);color:var(--text);
+  font-family:var(--mono);font-size:13px;padding:8px 10px;outline:none}
+.cw-compose input:focus{border-color:var(--accent)}
+.cw-compose button{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
+  font-size:14px;padding:0 12px;cursor:pointer}
+.cw-compose button:hover{background:var(--accent);color:var(--page)}
+@media(max-width:480px){.cw-panel{width:calc(100vw - 36px)}}
