@@ -347,6 +347,37 @@
       if (s) { s.value = q; s.dispatchEvent(new Event("input", { bubbles: true })); }
     }
     initChatWidget();
+    initFreshness();
+  }
+
+  // ── Freshness indicator ─────────────────────────────────────────────────
+  // Reads the .db-stamp on the page (format dd/mm/yyyy HH:MM), computes how
+  // old the data is, and colors it: green<12h, amber 12-24h, red>24h.
+  // Red = something didn't run; you should manually refresh the workflows.
+  function initFreshness() {
+    const el = document.querySelector(".db-stamp");
+    if (!el) return;
+    const txt = el.textContent.trim();
+    // parse dd/mm/yyyy HH:MM  (also tolerate dd/mm · HH:MM)
+    const m = txt.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?[^\d]+(\d{1,2}):(\d{2})/);
+    if (!m) return;
+    const now = new Date();
+    let [, dd, mm, yy, hh, mi] = m;
+    let year = yy ? (yy.length === 2 ? 2000 + +yy : +yy) : now.getFullYear();
+    const stamp = new Date(year, +mm - 1, +dd, +hh, +mi);
+    const ageH = (now - stamp) / 3600000;
+
+    let color, label, cls;
+    if (ageH < 12)      { color = "var(--accent)"; label = "φρέσκο";        cls = "fresh"; }
+    else if (ageH < 24) { color = "var(--amber,#e8a13a)"; label = "παλαιώνει"; cls = "aging"; }
+    else                { color = "var(--red,#ff5d52)"; label = "ΠΑΛΙΟ — κάνε refresh"; cls = "stale"; }
+
+    // wrap stamp with a colored dot + tooltip
+    el.innerHTML = '<span class="fresh-dot" style="background:' + color +
+      '"></span>' + txt + ' <span class="fresh-lab" style="color:' + color +
+      '">· ' + label + '</span>';
+    el.title = "Ηλικία δεδομένων: " + (ageH < 1 ? Math.round(ageH * 60) + " λεπτά"
+                                                 : ageH.toFixed(1) + " ώρες");
   }
 
   // ── Floating chat widget (every page except the full chat page) ──────────
