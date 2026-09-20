@@ -404,6 +404,7 @@ TEMPLATE = r"""<!doctype html>
   .lines{margin-top:10px;display:flex;flex-direction:column;gap:5px}
   .line{font-size:13px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
   .line.past{opacity:.55}
+  .line.target{background:var(--has-bg);box-shadow:inset 3px 0 0 var(--accent);padding-left:8px}
   .pill{font-size:11.5px;font-weight:600;border-radius:5px;padding:2px 8px;white-space:nowrap}
   .pill.has{background:var(--has-bg);color:var(--has)}
   .pill.warn{background:#f7e0dc;color:#b23b2e;font-weight:700}
@@ -429,6 +430,10 @@ TEMPLATE = r"""<!doctype html>
     <span class="db-title">ACCOUNT MAP</span>
     <span class="db-sub">ΚΗΜΔΗΣ</span>
     <div class="db-filters">
+      <div class="seg" id="seg-mode">
+        <button data-mode="gap" aria-pressed="true">Λείπει</button>
+        <button data-mode="has" aria-pressed="false">Έχει</button>
+      </div>
       <div class="seg" id="seg-gap"></div>
       <div class="seg">
         <button data-win="30" aria-pressed="false">30ημ</button>
@@ -462,7 +467,7 @@ TEMPLATE = r"""<!doctype html>
 <script>
 const A = __DATA__, SERVICES = __SERVICES__;
 const TODAY = new Date().toISOString().slice(0,10), DAY=86400000;
-let gapFilter='all', win=0, freshMode='all';
+let gapFilter='all', win=0, freshMode='all', svcMode='gap';
 const listEl=document.getElementById('list'), emptyEl=document.getElementById('empty'), qEl=document.getElementById('q');
 const money=n=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:0}).format(n)+' €';
 const dmy=s=>s?s.split('-').reverse().join('/'):'—';
@@ -474,8 +479,22 @@ document.getElementById('seg-gap').innerHTML =
   SERVICES.map(s=>'<button data-gap="'+s+'">'+s.split(' /')[0]+'</button>').join('');
 
 function passes(a){
-  if(gapFilter!=='all' && !a.gaps.includes(gapFilter)) return false;
-  if(win){ const d=daysTo(a.call_by); if(d===null||d>win) return false; }
+  if(svcMode==='gap'){
+    // account LACKS the selected service (new-sale opportunity)
+    if(gapFilter!=='all' && !a.gaps.includes(gapFilter)) return false;
+    if(win){ const d=daysTo(a.call_by); if(d===null||d>win) return false; }
+  } else {
+    // account HAS the selected service (renewal / displacement opportunity)
+    if(gapFilter!=='all'){
+      const line=a.has.find(h=>h.s===gapFilter);
+      if(!line) return false;                 // doesn't have it → skip
+      if(win){ const d=daysTo(line.end); if(d===null||d>win) return false; } // that service expiring soon
+    } else if(win){
+      // no specific service: any held service expiring within window
+      const soonest=a.has.map(h=>daysTo(h.end)).filter(d=>d!==null);
+      if(!soonest.length || Math.min(...soonest)>win) return false;
+    }
+  }
   if(freshMode==='stable' && a.renewed) return false;
   return true;
 }
@@ -489,7 +508,11 @@ function render(){
     const d=daysTo(a.call_by), now=d!==null&&d<=30 && !a.renewed;
     const lines=a.has.map(h=>{
       const past = h.end && h.end < TODAY;
-      return '<div class="line'+(past?' past':'')+'"><span class="pill has">'+h.s+'</span>'+
+      const target = (svcMode==='has' && gapFilter!=='all' && h.s===gapFilter);
+      const dTo = daysTo(h.end);
+      const soonTag = target && dTo!==null
+        ? '<span class="pill '+(dTo<=90?'gap':'has')+'">λήγει σε '+dTo+' ημ.</span>' : '';
+      return '<div class="line'+(past?' past':'')+(target?' target':'')+'"><span class="pill has">'+h.s+'</span>'+soonTag+
         (h.firm_bad_fit?'<span class="pill badfit" title="Το όνομα του αναδόχου δεν ταιριάζει με αυτή την υπηρεσία — επιβεβαίωσε στο ΚΗΜΔΗΣ πριν καλέσεις">⚠ ανάδοχος δεν ταιριάζει</span>':'')+
         (h.conflict?'<span class="pill warn">⚠ τίτλος: '+h.conflict+'</span>':'')+
         (h.umbrella?'<span class="pill umbrella" title="Ο CPV είναι γενικός (umbrella) — μπορεί να καλύπτει άλλη υπηρεσία, έλεγξε τη σύμβαση">⚠ CPV γενικός</span>':'')+
@@ -522,6 +545,7 @@ qEl.addEventListener('input',render);
 wire('[data-gap]', b=>gapFilter=b.dataset.gap);
 wire('[data-win]', b=>win=+b.dataset.win);
 wire('[data-fresh]', b=>freshMode=b.dataset.fresh);
+wire('[data-mode]', b=>svcMode=b.dataset.mode);
 render();
 </script>
 </body>
