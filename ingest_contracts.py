@@ -45,6 +45,11 @@ SERVICES = {
     "Συμμόρφωση / Whistleblowing": ["79410000-1"],
     "DPO / Προστασία δεδομένων": ["79417000-0"],
     "Χαρτογράφηση / Οργάνωση": ["79411000-8", "72221000-0"],
+    # ── CYBERSECURITY / NIS 2  (ν.5160/2024) ─────────────────────────
+    # These CPVs are umbrella/IT codes — a bare CPV match would flood the
+    # feed with generic IT contracts (the Ταναγράς problem). They are
+    # TITLE-GATED below: tagged cyber ONLY if the title confirms it.
+    "Κυβερνοασφάλεια": ["72220000-3", "72810000-1", "48730000-4"],
     # ── ACCOUNTING & TAX (alliance) ──────────────────────────────────
     "Λογιστικές υπηρεσίες": ["79210000-9", "79211000-6", "79211100-7", "79211110-3", "79211120-6"],
     "Φορολογικές υπηρεσίες": ["79221000-9", "79222000-6"],
@@ -53,6 +58,14 @@ SERVICES = {
 }
 ALL_CODES = sorted({c for v in SERVICES.values() for c in v})
 SERVICE_OF = {c: s for s, v in SERVICES.items() for c in v}
+
+# Title-gated CPVs: umbrella/IT codes that mislabel far too often to trust on
+# their own. A contract carrying one of these is tagged with its service ONLY
+# if the title positively confirms that service (via POSITIVE_KEYWORDS). If the
+# title doesn't confirm, we keep looking at the other CPVs and otherwise leave
+# the contract untagged — it never enters the feed. Same philosophy as the
+# subject_check badges, but applied at ingest so generic IT noise never lands.
+TITLE_GATED_CPVS = {"72220000-3", "72810000-1", "48730000-4"}
 UNIT_DAYS = {"1": 1.0, "2": 7.0, "3": 30.4, "4": 365.25}
 
 SESSION = requests.Session()
@@ -165,6 +178,18 @@ POSITIVE_KEYWORDS = {
         "χαρτογράφ", "χαρτογραφ", "διαδικασ", "οργανωτικ", "οργάνωσ", "οργανωσ",
         "καταγραφή διαδ", "καταγραφη διαδ",
     ],
+    "Κυβερνοασφάλεια": [
+        "κυβερνοασφάλ", "κυβερνοασφαλ", "κυβερνοεπίθ", "κυβερνοεπιθ",
+        "ασφάλεια πληροφορ", "ασφαλεια πληροφορ", "ασφάλειας πληροφορ",
+        "ασφαλειας πληροφορ", "ασφάλεια δικτύ", "ασφαλεια δικτυ",
+        "δικτύων και πληροφορ", "δικτυων και πληροφορ",
+        "nis2", "nis 2", "οδηγ nis", "οδηγία nis",
+        "ν.5160", "ν. 5160", "5160/2024", "5160/24",
+        "information security", "cybersecurity", "cyber security",
+        "iso 27001", "27001", "soc ", "κέντρο επιχειρ ασφάλ",
+        "έλεγχος πληροφοριακ", "ελεγχος πληροφοριακ", "έλεγχο πληροφοριακ",
+        "ελεγχο πληροφοριακ", "audit πληροφοριακ", "it audit", "computer audit",
+    ],
     "Οικονομικός έλεγχος / Ορκωτοί": [
         "οικονομικ έλεγχ", "οικονομικ ελεγχ", "ορκωτ", "χρηματοοικονομικ έλεγχ",
         "financial audit", "statutory audit", "ελεγκτικές υπηρεσίες",
@@ -231,17 +256,23 @@ def subject_check(subject, service):
 def parse(c):
     det = c.get("contractingDataDetails") or {}
     members = det.get("contractingMembersDataList") or []
+    subject = (c.get("title") or c.get("subject") or "").strip() or None
     service = None
     for obj in (c.get("objectDetailsList") or []):
         for cp in (obj.get("cpvs") or []):
-            s = SERVICE_OF.get(str(cp.get("key", "")).strip())
-            if s:
-                service = s
-                break
+            code = str(cp.get("key", "")).strip()
+            s = SERVICE_OF.get(code)
+            if not s:
+                continue
+            # Title-gated umbrella/IT codes: accept only if the title
+            # positively confirms the service; otherwise keep looking.
+            if code in TITLE_GATED_CPVS and subject_check(subject, s) != "confirmed":
+                continue
+            service = s
+            break
         if service:
             break
     signed = (c.get("contractSignedDate") or "")[:10] or None
-    subject = (c.get("title") or c.get("subject") or "").strip() or None
     return {
         "adam": c.get("referenceNumber"),
         "org": (c.get("organization") or {}).get("value"),
