@@ -44,7 +44,25 @@ CPV_CATEGORIES = {
         "79400000-8", "79410000-1", "79411000-8", "79411100-9",
         "79412000-5", "79413000-2", "79414000-9", "79418000-7", "79419000-4",
     ],
+    "Κυβερνοασφάλεια": ["72220000-3", "72810000-1", "48730000-4"],
 }
+
+# Cyber CPVs are umbrella/IT codes — title-gated so the open-tenders radar
+# shows genuine cyber / NIS 2 work, not every generic IT tender.
+CYBER_CAT = "Κυβερνοασφάλεια"
+CYBER_TITLE_KEYWORDS = [
+    "κυβερνοασφάλ", "κυβερνοασφαλ", "κυβερνοεπίθ", "ασφάλεια πληροφορ",
+    "ασφάλειας πληροφορ", "ασφάλεια δικτύ", "δικτύων και πληροφορ",
+    "nis2", "nis 2", "οδηγ nis", "5160", "information security",
+    "cybersecurity", "cyber security", "iso 27001", "27001",
+    "έλεγχος πληροφοριακ", "έλεγχο πληροφοριακ", "it audit", "computer audit",
+]
+
+
+def title_is_cyber(title):
+    t = (title or "").lower()
+    return any(k in t for k in CYBER_TITLE_KEYWORDS)
+
 
 COMPETITIVE_PROCEDURES = {
     "Ανοιχτή διαδικασία", "Κλειστή διαδικασία",
@@ -101,6 +119,9 @@ def collect():
     by_adam = {}
     for cat, codes in CPV_CATEGORIES.items():
         for n in fetch_notices(codes):
+            # Title-gate the cyber category so generic IT doesn't flood in.
+            if cat == CYBER_CAT and not title_is_cyber(n.get("title")):
+                continue
             item = to_item(n)
             adam = item["adam"]
             if not adam:
