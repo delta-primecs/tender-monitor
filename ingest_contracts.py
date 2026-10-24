@@ -279,7 +279,7 @@ def parse(c):
         "orgkey": (c.get("organization") or {}).get("key"),
         "region": (c.get("nutsCode") or {}).get("value"),
         "service": service,
-        "holder": " / ".join(m.get("name", "") for m in members) or None,
+        "holder": " / ".join(n for m in members if (n := m.get("name"))) or None,
         "signer": (det.get("signers") or {}).get("value"),
         "value": c.get("contractBudget") or c.get("totalCostWithoutVAT") or 0,
         "signed": signed,
