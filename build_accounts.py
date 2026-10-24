@@ -251,7 +251,7 @@ def parse(c):
                       c.get("contractDuration"),
                       (c.get("contractDurationUnitOfMeasure") or {}).get("key"))
     ts = title_service(title)
-    holder = " / ".join(m.get("name", "") for m in members) or None
+    holder = " / ".join(n for m in members if (n := m.get("name"))) or None
 
     # Three independent warning signals — each surfaces its own tag:
     conflict     = ts if (ts and service and ts != service) else None
