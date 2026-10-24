@@ -40,6 +40,8 @@ SERVICES = {
     "Συμμόρφωση / Whistleblowing": ["79410000-1"],
     "DPO / Προστασία δεδομένων": ["79417000-0"],
     "Χαρτογράφηση / Οργάνωση": ["79411000-8", "72221000-0"],
+    # ── CYBERSECURITY / NIS 2  (ν.5160/2024) — title-gated below ─────
+    "Κυβερνοασφάλεια": ["72220000-3", "72810000-1", "48730000-4"],
     # ── ACCOUNTING & TAX (alliance) ──────────────────────────────────
     "Λογιστικές υπηρεσίες": ["79210000-9", "79211000-6", "79211100-7", "79211110-3", "79211120-6"],
     "Φορολογικές υπηρεσίες": ["79221000-9", "79222000-6"],
@@ -131,7 +133,17 @@ TITLE_HINTS = {
     "DPO / Προστασία δεδομένων": ["προστασία δεδομέν", "προστασίας δεδομέν",
                                    "προσωπικών δεδομέν", "dpo", "υπεύθυν προστασίας"],
     "Χαρτογράφηση / Οργάνωση": ["χαρτογράφησ", "καταγραφή διαδικασ", "καταγραφής διαδικασ"],
+    "Κυβερνοασφάλεια": ["κυβερνοασφάλ", "κυβερνοασφαλ", "ασφάλεια πληροφορ",
+                         "ασφάλειας πληροφορ", "ασφάλεια δικτύ", "nis2", "nis 2",
+                         "5160", "iso 27001", "27001", "information security",
+                         "cybersecurity", "cyber security", "έλεγχος πληροφοριακ",
+                         "έλεγχο πληροφοριακ", "it audit", "computer audit"],
 }
+
+# Title-gated umbrella/IT CPVs: on the Account Map a bare CPV match would tag
+# every generic IT contract as cyber (the Ταναγράς problem). These are tagged
+# with their service ONLY if the title confirms it via TITLE_HINTS.
+TITLE_GATED_CPVS = {"72220000-3", "72810000-1", "48730000-4"}
 
 
 def title_service(title):
@@ -191,6 +203,9 @@ NAME_INCOMPATIBLE_HINTS = {
     "Επιχειρηματική / οικονομική συμβουλευτική": [
         "εκπαιδευτικ", "καθαρι", "τροφί", "εστιατ",
     ],
+    "Κυβερνοασφάλεια": [
+        "κατασκευ", "ενεργειακ", "καθαρι", "τροφί", "εστιατ", "κατασκηνώσ",
+    ],
 }
 
 
@@ -210,16 +225,24 @@ def parse(c):
 
     # Capture BOTH the matched service AND the CPV that triggered it,
     # so we can flag umbrella-CPV matches downstream.
+    title = (c.get("title") or "").strip()
+    tl = title.lower()
     service = None
     matched_cpv = None
     for obj in (c.get("objectDetailsList") or []):
         for cp in (obj.get("cpvs") or []):
             code = str(cp.get("key", "")).strip()
             s = SERVICE_OF.get(code)
-            if s:
-                service = s
-                matched_cpv = code
-                break
+            if not s:
+                continue
+            # Title-gated umbrella/IT codes: accept only if the title
+            # positively confirms the service; else keep looking.
+            if code in TITLE_GATED_CPVS and not any(
+                    k in tl for k in TITLE_HINTS.get(s, [])):
+                continue
+            service = s
+            matched_cpv = code
+            break
         if service:
             break
 
@@ -227,7 +250,6 @@ def parse(c):
     end = compute_end(signed, c.get("endDate"), bool(c.get("noEndDate")),
                       c.get("contractDuration"),
                       (c.get("contractDurationUnitOfMeasure") or {}).get("key"))
-    title = (c.get("title") or "").strip()
     ts = title_service(title)
     holder = " / ".join(m.get("name", "") for m in members) or None
 
