@@ -29,7 +29,26 @@ CPV_CATEGORIES = {
     "Marketing & έρευνα": ["79300000-7", "79310000-0", "79320000-3", "79340000-9", "79341000-6"],
     "Ανθρώπινο δυναμικό": ["79600000-0", "79610000-3"],
     "Έργα & διοικητική υποστήριξη": ["79420000-4", "79421000-1", "79500000-9"],
+    "Κυβερνοασφάλεια": ["72220000-3", "72810000-1", "48730000-4"],
 }
+
+# The cyber CPVs are umbrella/IT codes (esp. 72220000-3 = general IT consulting).
+# A bare match floods this radar with generic IT. So the cyber category is
+# TITLE-GATED: a contract gets the Κυβερνοασφάλεια tag only if its title
+# actually mentions cyber / NIS 2 / information-security.
+CYBER_CAT = "Κυβερνοασφάλεια"
+CYBER_TITLE_KEYWORDS = [
+    "κυβερνοασφάλ", "κυβερνοασφαλ", "κυβερνοεπίθ", "ασφάλεια πληροφορ",
+    "ασφάλειας πληροφορ", "ασφάλεια δικτύ", "δικτύων και πληροφορ",
+    "nis2", "nis 2", "οδηγ nis", "5160", "information security",
+    "cybersecurity", "cyber security", "iso 27001", "27001",
+    "έλεγχος πληροφοριακ", "έλεγχο πληροφοριακ", "it audit", "computer audit",
+]
+
+
+def title_is_cyber(title):
+    t = (title or "").lower()
+    return any(k in t for k in CYBER_TITLE_KEYWORDS)
 
 
 def date_windows(months_back, window_days=175):
@@ -106,6 +125,9 @@ def collect():
     for cat, codes in CPV_CATEGORIES.items():
         for dfrom, dto in windows:
             for c in fetch_contracts(codes, dfrom, dto):
+                # Title-gate the cyber category so generic IT doesn't flood in.
+                if cat == CYBER_CAT and not title_is_cyber(c.get("title")):
+                    continue
                 if c.get("noEndDate"):
                     continue
                 end = c.get("endDate")
