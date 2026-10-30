@@ -14,6 +14,43 @@
 
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
 
+  // ── Διαύγεια: free-text search opened in a SEPARATE window ───────────────
+  // Type "DIAV <όροι>" (also ΔΙΑΥΓΕΙΑ / DY) in the command bar and the real
+  // Διαύγεια portal opens in its own window, showing the results for those
+  // words — e.g.  DIAV οικονομικές καταστάσεις λιμενικό ταμείο σκάλας ωρωπού.
+  // Opening the official site in a popup sidesteps its embedding block (the
+  // portal refuses to load inside an iframe), so this always works.
+  const DIAV_CODES = ["DIAV", "DIAVGEIA", "ΔΙΑΥΓΕΙΑ", "DY"];
+  // Accent-proof: "διαύγεια" (with tonos) upper-cases to "ΔΙΑΎΓΕΙΑ", so strip
+  // diacritics before matching the command codes.
+  function deAccent(s) {
+    return (s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+  function isDiavHead(s) { return DIAV_CODES.includes(deAccent(s)); }
+  function openDiavgeia(term) {
+    const base = "https://diavgeia.gov.gr/search";
+    const url = term
+      ? base + "?query=" + encodeURIComponent(term) + "&sort=recent&page=0"
+      : base;
+    // Named window → one Διαύγεια window that updates on each new search,
+    // instead of a new window every time.
+    window.open(url, "tr_diavgeia",
+      "width=1120,height=920,left=100,top=50,scrollbars=yes,resizable=yes");
+  }
+  // If v is a Διαύγεια command, return its term ("" when no term); else null.
+  function externalTerm(v) {
+    const parts = (v || "").trim().split(/\s+/);
+    if (!parts.length || !parts[0]) return null;
+    if (isDiavHead(parts[0])) return parts.slice(1).join(" ").trim();
+    return null;
+  }
+  function clearTop() {
+    const i = document.getElementById("tcinput");
+    if (i) i.value = "";
+    const l = document.getElementById("tclist");
+    if (l) l.innerHTML = "";
+  }
+
   function renderNav() {
     const slot = document.getElementById("nav");
     if (!slot) return;
@@ -39,9 +76,9 @@
       '<div class="tc-row">' +
       '<span class="tc-prompt">&gt;</span>' +
       '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
-      'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   EXP σοφαδων">' +
+      'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   DIAV οικονομικές καταστάσεις λιμενικό ταμείο">' +
       '<button id="densbtn" class="tc-dens" title="Πυκνότητα εμφάνισης">◧ Πυκνότητα</button>' +
-      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS</span>' +
+      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS · DIAV → Διαύγεια ↗</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
     nav.parentNode.insertBefore(bar, nav);
@@ -88,6 +125,14 @@
     const term = parts.slice(1).join(" ").trim();
     const out = [];
 
+    // Διαύγεια — external portal search in a separate window
+    if (isDiavHead(head)) {
+      out.push({ type: "ext",
+        label: "Διαύγεια" + (term ? ' · "' + term + '"' : " — αναζήτηση στο portal"),
+        code: "ΔΙΑΥΓΕΙΑ ↗", term: term });
+      return out;
+    }
+
     const exact = TABS.find(t => t.code === head);
     if (exact) {
       // Recognized tab code first → show the resolved action
@@ -110,6 +155,13 @@
                    key: t.key, href: t.href });
       }
     });
+    // Διαύγεια discovery when the user starts typing the command (accent-proof)
+    var lowN = deAccent(low).toLowerCase();
+    if (lowN && ("diavgeia".startsWith(lowN) || "diav".startsWith(lowN) ||
+                 lowN === "dy" || "διαυγεια".startsWith(lowN))) {
+      out.push({ type: "fill", label: "Διαύγεια — αναζήτηση στο portal (νέο παράθυρο)",
+                 code: "DIAV <όρος>", fill: "DIAV " });
+    }
     // default search action for a free term
     if (low) {
       out.push({ type: "search", label: 'Αναζήτηση: "' + v.trim() + '"',
@@ -127,7 +179,8 @@
     list.innerHTML = topSug.map((s, i) =>
       '<div class="tc-item' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '">' +
       (s.type === "tab" ? '<span class="tc-key">' + s.key + '</span>'
-                        : '<span class="tc-key tc-search">⌕</span>') +
+        : s.type === "ext" ? '<span class="tc-key tc-search">↗</span>'
+        : '<span class="tc-key tc-search">⌕</span>') +
       '<span class="tc-label">' + s.label + '</span>' +
       '<span class="tc-code">' + s.code + '</span>' +
       '<span class="tc-enter">Enter ⏎</span></div>'
@@ -149,7 +202,20 @@
   }
 
   function runTopSelected(v) {
-    if (topSug.length && topSug[topSel]) { location.href = topSug[topSel].href; return; }
+    const s = (topSug.length && topSug[topSel]) ? topSug[topSel] : null;
+    if (s) {
+      if (s.type === "ext") { openDiavgeia(s.term); clearTop(); return; }
+      if (s.type === "fill") {
+        const i = document.getElementById("tcinput");
+        if (i) { i.value = s.fill; i.focus(); }
+        renderTopSuggestions(s.fill.trim());
+        return;
+      }
+      location.href = s.href; return;
+    }
+    // no suggestion row: honour a raw "DIAV <όροι>" typed and submitted
+    const t = externalTerm(v);
+    if (t !== null) { openDiavgeia(t); clearTop(); return; }
     if (v) location.href = "contractors.html?q=" + encodeURIComponent(v);
   }
 
@@ -184,6 +250,15 @@
   function computeSuggestions(v) {
     const low = v.toLowerCase();
     const out = [];
+    // Διαύγεια — external portal search in a separate window
+    const dhead = (v.trim().split(/\s+/)[0] || "").toUpperCase();
+    const dterm = v.trim().split(/\s+/).slice(1).join(" ").trim();
+    if (isDiavHead(dhead)) {
+      out.push({ type: "ext",
+        label: "Διαύγεια" + (dterm ? ' · "' + dterm + '"' : " — αναζήτηση στο portal"),
+        code: "ΔΙΑΥΓΕΙΑ ↗", term: dterm });
+      return out;
+    }
     // matching tabs first
     TABS.forEach(t => {
       if (!low || t.code.toLowerCase().startsWith(low) ||
@@ -192,6 +267,13 @@
                    key: t.key, href: t.href });
       }
     });
+    // Διαύγεια discovery when the user starts typing the command (accent-proof)
+    var lowN = deAccent(low).toLowerCase();
+    if (lowN && ("diavgeia".startsWith(lowN) || "diav".startsWith(lowN) ||
+                 lowN === "dy" || "διαυγεια".startsWith(lowN))) {
+      out.push({ type: "fill", label: "Διαύγεια — αναζήτηση στο portal (νέο παράθυρο)",
+                 code: "DIAV <όρος>", fill: "DIAV " });
+    }
     // a search action if there's a query that isn't just a tab code
     if (low) {
       out.push({ type: "search", label: 'Αναζήτηση: "' + v + '"',
@@ -208,6 +290,7 @@
     list.innerHTML = suggestions.map((s, i) =>
       '<div class="cmditem' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '">' +
       (s.type === "tab" ? '<span class="ci-key">' + s.key + '</span>' :
+        s.type === "ext" ? '<span class="ci-key ci-search">↗</span>' :
                           '<span class="ci-key ci-search">⌕</span>') +
       '<span class="ci-label">' + s.label + '</span>' +
       '<span class="ci-code">' + s.code + '</span>' +
@@ -229,9 +312,16 @@
   }
 
   function runSelected(v) {
-    if (suggestions.length && suggestions[selIdx]) {
-      location.href = suggestions[selIdx].href;
-      return;
+    const s = (suggestions.length && suggestions[selIdx]) ? suggestions[selIdx] : null;
+    if (s) {
+      if (s.type === "ext") { openDiavgeia(s.term); closeCmd(); return; }
+      if (s.type === "fill") {
+        const i = document.getElementById("cmdinput");
+        if (i) { i.value = s.fill; i.focus(); }
+        renderSuggestions(s.fill.trim());
+        return;
+      }
+      location.href = s.href; return;
     }
     runCmd(v);
   }
@@ -269,6 +359,8 @@
 
   function runCmd(v) {
     if (!v) { closeCmd(); return; }
+    const t = externalTerm(v);
+    if (t !== null) { openDiavgeia(t); closeCmd(); return; }
     const cmd = parseCommand(v);
     if (cmd) location.href = cmd.href;
   }
@@ -283,6 +375,7 @@
       '<div class="kbbox"><div class="kbtitle">Συντομεύσεις πληκτρολογίου</div>' +
       '<table>' + rows +
       '<tr><td class="k">`</td><td>Άνοιγμα γραμμής εντολών (από παντού)</td></tr>' +
+      '<tr><td class="k">DIAV</td><td>Αναζήτηση στη Διαύγεια σε ξεχωριστό παράθυρο — π.χ. DIAV οικονομικές καταστάσεις λιμενικό ταμείο σκάλας ωρωπού</td></tr>' +
       '<tr><td class="k">/</td><td>Εστίαση στην αναζήτηση</td></tr>' +
       '<tr><td class="k">:</td><td>Γραμμή εντολών (tab ή αναζήτηση)</td></tr>' +
       '<tr><td class="k">g</td><td>Γραμμή εντολών (ίδιο με :)</td></tr>' +
@@ -348,6 +441,67 @@
     }
     initChatWidget();
     initFreshness();
+    initPresence();
+  }
+
+  // ── Presence: heartbeat + who's-online indicator ────────────────────────
+  function initPresence() {
+    const tc = document.getElementById("topcmd");
+    if (!tc) return;
+    // indicator element in the command bar row
+    const row = tc.querySelector(".tc-row");
+    if (!row) return;
+    const ind = document.createElement("div");
+    ind.id = "presence";
+    ind.title = "Ομάδα online";
+    row.appendChild(ind);
+
+    const pageName = (here() || "index.html").replace(".html", "");
+
+    async function beat() {
+      try {
+        await fetch("/api/presence", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ page: pageName }),
+        });
+      } catch (e) {}
+    }
+    async function refresh() {
+      try {
+        const r = await fetch("/api/presence", { cache: "no-store" });
+        const d = await r.json();
+        if (!d.ok) { ind.style.display = "none"; return; }
+        render(d.users);
+      } catch (e) {}
+    }
+    function ago(ts) {
+      const m = Math.floor((Date.now() - ts) / 60000);
+      if (m < 1) return "τώρα";
+      if (m < 60) return "πριν " + m + "'";
+      const h = Math.floor(m / 60);
+      if (h < 24) return "πριν " + h + "h";
+      return "πριν " + Math.floor(h / 24) + "μ";
+    }
+    function render(users) {
+      if (!users.length) { ind.innerHTML = ""; return; }
+      const online = users.filter(u => u.online);
+      const dots = users.slice(0, 6).map(u =>
+        '<span class="pres-item">' +
+        '<span class="pres-dot' + (u.online ? " on" : "") + '"></span>' +
+        '<span class="pres-name">' + esc(u.name) + '</span>' +
+        (u.online
+          ? '<span class="pres-page">' + (u.page ? "· " + esc(u.page) : "") + '</span>'
+          : '<span class="pres-page">· ' + ago(u.ts) + '</span>') +
+        '</span>'
+      ).join("");
+      ind.innerHTML = '<span class="pres-count">' + online.length + ' online</span>' + dots;
+    }
+    function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+    beat();
+    refresh();
+    setInterval(beat, 60000);     // heartbeat every 60s
+    setInterval(refresh, 30000);  // refresh the list every 30s
   }
 
   // ── Freshness indicator ─────────────────────────────────────────────────
