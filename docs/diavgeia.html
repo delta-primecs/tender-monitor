@@ -11,6 +11,8 @@
     letter-spacing:.06em;text-transform:uppercase}
   .db-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
     padding-left:14px;border-left:1px solid var(--hair2)}
+  .db-stats{margin-left:auto;font-size:11px;color:var(--muted)}
+  .db-stats b{color:var(--accent)}
 
   .searchbar{display:flex;gap:8px;padding:12px 14px;background:var(--card);
     border:1px solid var(--hair);border-top:0}
@@ -22,105 +24,137 @@
     letter-spacing:.05em;padding:0 20px;cursor:pointer}
   .searchbar button:hover{background:var(--accent);color:var(--page)}
 
-  .panel{background:var(--card);border:1px solid var(--hair);border-top:0;
-    min-height:160px;padding:6px 0}
-  .row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--hair);
-    cursor:pointer;text-decoration:none}
+  .panel{background:var(--card);border:1px solid var(--hair);border-top:0;min-height:160px;padding:4px 0}
+
+  /* decision rows */
+  .row{padding:12px 16px;border-bottom:1px solid var(--hair)}
   .row:last-child{border-bottom:0}
-  .row:hover{background:var(--panel)}
-  .row .name{color:var(--bright);font-size:13.5px;font-weight:600;flex:1;line-height:1.4}
-  .row .uid{color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
-  .row .open{color:var(--accent);font-size:11px;border:1px solid var(--accent);
-    padding:4px 11px;border-radius:5px;white-space:nowrap}
-  .row.best .name::after{content:"ακριβέστερο";margin-left:10px;color:var(--accent);
-    font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle;
-    border:1px solid var(--accent-dim);padding:1px 6px;border-radius:4px}
+  .row .top{display:flex;gap:12px;align-items:baseline;justify-content:space-between}
+  .row .subj{color:var(--bright);font-size:13.5px;font-weight:600;line-height:1.45;flex:1}
+  .row .date{color:var(--muted);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .row .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .row .type{color:var(--signal,#e8a13a);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    background:var(--signal-bg,#2a2010);padding:2px 7px;border-radius:4px}
+  .row .ada{color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .row .links{margin-left:auto;display:flex;gap:8px}
+  .row .links a{color:var(--link);font-size:11px;text-decoration:none;border:1px solid var(--hair2);
+    padding:3px 9px;border-radius:5px;white-space:nowrap}
+  .row .links a:hover{border-color:var(--link);background:var(--panel)}
+
+  /* φορέας picker rows */
+  .pick{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--hair);
+    cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-top:0;
+    color:inherit;font-family:var(--mono)}
+  .pick:hover{background:var(--panel)}
+  .pick .name{color:var(--bright);font-size:13px;font-weight:600;flex:1}
+  .pick .open{color:var(--accent);font-size:11px;border:1px solid var(--accent);padding:3px 10px;border-radius:5px}
 
   .state{color:var(--muted);font-size:12.5px;text-align:center;padding:40px 16px;line-height:1.7}
   .state b{color:var(--text)}
-  .hint{color:var(--muted);font-size:11px;padding:10px 16px;border-top:1px solid var(--hair)}
-  .hint code{color:var(--accent)}
+  .bar{padding:9px 16px;border-bottom:1px solid var(--hair);font-size:11.5px;color:var(--muted)}
+  .bar b{color:var(--accent)} .bar a{color:var(--link);text-decoration:none}
+  .hint{color:var(--muted);font-size:11px;padding:10px 16px}
 </style></head><body>
 <div id="nav"></div>
 <div class="wrap">
   <div class="deskbar">
     <span class="db-title">ΔΙΑΥΓΕΙΑ</span>
-    <span class="db-sub">Αναζήτηση ανά φορέα → αποφάσεις</span>
+    <span class="db-sub">Θέμα + φορέας → αποφάσεις</span>
+    <div class="db-stats" id="stats"></div>
   </div>
   <div class="searchbar">
     <input id="dq" type="text" autocomplete="off" spellcheck="false"
-           placeholder="Όνομα φορέα  —  π.χ.  ΛΙΜΕΝΙΚΟ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ">
-    <button id="go">Εύρεση φορέα</button>
+           placeholder="π.χ.  οικονομικες καταστασεις ωρωπου   ·   ισολογισμος ναουσας">
+    <button id="go">Αναζήτηση</button>
   </div>
   <div class="panel" id="panel">
-    <div class="state">Γράψε το όνομα ενός φορέα (Δήμος, Λιμενικό Ταμείο, ΝΠΔΔ…)<br>
-      και άνοιξε τις αποφάσεις του στη Διαύγεια, με τα φίλτρα της έτοιμα.</div>
+    <div class="state">Γράψε <b>θέμα + φορέα</b> μαζί — π.χ. «οικονομικες καταστασεις ωρωπου».<br>
+      Βρίσκει τον φορέα, φέρνει τις αποφάσεις του και κρατάει αυτές που ταιριάζουν στο θέμα.</div>
   </div>
-  <div class="hint">Η ελεύθερη αναζήτηση λέξεων στη Διαύγεια φέρνει χιλιάδες άσχετα· η αναζήτηση
-    <b>ανά φορέα</b> είναι ο καθαρός τρόπος. Μέσα στη Διαύγεια, στένεψε με το <code>Είδος</code>
-    (π.χ. ΙΣΟΛΟΓΙΣΜΟΣ – ΑΠΟΛΟΓΙΣΜΟΣ) από τα φίλτρα αριστερά.</div>
 </div>
 <script src="nav.js"></script>
 <script>
-const box = document.getElementById('dq');
-const goBtn = document.getElementById('go');
-const panel = document.getElementById('panel');
+const box=document.getElementById('dq'), goBtn=document.getElementById('go');
+const panel=document.getElementById('panel'), statsEl=document.getElementById('stats');
 
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-function rowHtml(m, best){
-  return '<a class="row'+(best?' best':'')+'" href="'+m.url+'" target="_blank" rel="noopener">'+
-    '<span class="name">'+esc(m.label)+'</span>'+
-    '<span class="uid">UID '+esc(String(m.uid))+'</span>'+
-    '<span class="open">Αποφάσεις ↗</span></a>';
+function decisionHtml(it){
+  const links=(it.doc?'<a href="'+it.doc+'" target="_blank" rel="noopener">PDF ↗</a>':'')+
+    (it.view?'<a href="'+it.view+'" target="_blank" rel="noopener">Απόφαση ↗</a>':'');
+  return '<div class="row"><div class="top"><div class="subj">'+esc(it.subject)+'</div>'+
+    '<div class="date">'+esc(it.date||'')+'</div></div><div class="meta">'+
+    (it.type?'<span class="type">'+esc(it.type)+'</span>':'')+
+    (it.ada?'<span class="ada">'+esc(it.ada)+'</span>':'')+
+    '<span class="links">'+links+'</span></div></div>';
+}
+
+function renderResults(d){
+  const org=d.org&&d.org.label?d.org.label:'';
+  statsEl.innerHTML = org?('Φορέας: <b>'+esc(org)+'</b>'):'';
+  if(d.error){
+    panel.innerHTML='<div class="state">Σφάλμα Διαύγειας: '+esc(d.error)+'</div>'; return;
+  }
+  const items=d.items||[];
+  let bar='<div class="bar">';
+  if(d.topicApplied) bar+='Θέμα «<b>'+esc(d.topic)+'</b>» · '+d.shown+' από '+d.total+' αποφάσεις του φορέα';
+  else if(d.topic) bar+='Καμία απόφαση με θέμα «<b>'+esc(d.topic)+'</b>» — δείχνω και τις '+d.total+' πρόσφατες του φορέα';
+  else bar+=d.total+' πρόσφατες αποφάσεις του φορέα';
+  if(d.webUrl) bar+=' · <a href="'+d.webUrl+'" target="_blank" rel="noopener">άνοιγμα στη Διαύγεια ↗</a>';
+  bar+='</div>';
+  if(!items.length){ panel.innerHTML=bar+'<div class="state">Καμία απόφαση.</div>'; return; }
+  panel.innerHTML=bar+items.map(decisionHtml).join('');
+}
+
+function renderPick(d){
+  statsEl.textContent='';
+  const topic=d.topic||'';
+  const head='<div class="bar">Πολλοί φορείς ταιριάζουν'+(topic?' (θέμα: «<b>'+esc(topic)+'</b>»)':'')+
+    ' — διάλεξε:</div>';
+  const rows=(d.matches||[]).map(m=>
+    '<button class="pick" data-uid="'+esc(String(m.uid))+'" data-label="'+esc(m.label)+'">'+
+    '<span class="name">'+esc(m.label)+'</span><span class="open">Αποφάσεις ↗</span></button>').join('');
+  panel.innerHTML=head+rows;
+  panel.querySelectorAll('.pick').forEach(b=>b.addEventListener('click',()=>{
+    openOrg(b.dataset.uid, b.dataset.label, topic);
+  }));
 }
 
 async function run(q){
   if(!q) return;
-  panel.innerHTML = '<div class="state">Αναζήτηση φορέα…<br>'+
-    '<span style="font-size:11px">(η πρώτη φορά αργεί λίγο — φορτώνει & αποθηκεύει τη λίστα φορέων)</span></div>';
+  panel.innerHTML='<div class="state">Αναζήτηση…<br><span style="font-size:11px">(η πρώτη φορά αργεί λίγο — φορτώνει τον κατάλογο φορέων)</span></div>';
+  statsEl.textContent='';
   try{
-    const r = await fetch('/api/diavgeia?q='+encodeURIComponent(q), {cache:'no-store'});
-    const d = await r.json();
-    if(d.error){
-      panel.innerHTML = '<div class="state">Σφάλμα: '+esc(d.error)+
-        '<br><span style="font-size:11px">Αν μόλις στήθηκε, κάνε redeploy στο Cloudflare Pages.</span></div>';
-      return;
-    }
-    const matches = d.matches || [];
-    if(!matches.length){
-      panel.innerHTML = '<div class="state">Κανένας φορέας δεν ταιριάζει με <b>'+esc(q)+'</b>.<br>'+
-        'Δοκίμασε πιο συγκεκριμένο όνομα (π.χ. «ΔΗΜΟΣ ΝΑΟΥΣΑΣ», «ΛΙΜΕΝΙΚΟ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ»).</div>';
-      return;
-    }
-    // One clearly-best match → go straight to its Διαύγεια page.
-    const top = matches[0], second = matches[1];
-    const decisive = matches.length === 1 ||
-                     (top.score >= 2 && (!second || top.score > second.score));
-    if(decisive){
-      panel.innerHTML = '<div class="state">Βρέθηκε: <b>'+esc(top.label)+'</b><br>'+
-        '<span style="font-size:11px">Άνοιγμα αποφάσεων στη Διαύγεια…</span></div>';
-      window.location.href = top.url;
-      return;
-    }
-    // Several candidates → let the user pick.
-    panel.innerHTML =
-      '<div class="hint" style="border:0">'+matches.length+' πιθανοί φορείς — διάλεξε:</div>'+
-      matches.map((m,i)=>rowHtml(m, i===0)).join('');
-  }catch(e){
-    panel.innerHTML = '<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>';
-  }
+    const r=await fetch('/api/diavgeia?q='+encodeURIComponent(q),{cache:'no-store'});
+    const d=await r.json();
+    route(d);
+  }catch(e){ panel.innerHTML='<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>'; }
 }
 
-function submit(){ const q = box.value.trim(); if(q) run(q); }
-goBtn.addEventListener('click', submit);
-box.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); }});
+async function openOrg(uid,label,topic){
+  panel.innerHTML='<div class="state">Φόρτωση αποφάσεων του φορέα…</div>';
+  try{
+    const r=await fetch('/api/diavgeia?uid='+encodeURIComponent(uid)+
+      '&topic='+encodeURIComponent(topic||'')+'&label='+encodeURIComponent(label||''),{cache:'no-store'});
+    const d=await r.json();
+    route(d);
+  }catch(e){ panel.innerHTML='<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>'; }
+}
 
-// Opened as diavgeia.html?q=…  (from the DIAV command) → search immediately.
-(function(){
-  const q = new URLSearchParams(location.search).get('q');
-  if(q){ box.value = q; run(q); }
-  else { box.focus(); }
-})();
+function route(d){
+  if(!d||d.mode==='error'){ panel.innerHTML='<div class="state">Σφάλμα: '+esc((d&&d.error)||'άγνωστο')+
+    '<br><span style="font-size:11px">Αν μόλις στήθηκε, κάνε redeploy στο Cloudflare Pages.</span></div>'; return; }
+  if(d.mode==='none'){ panel.innerHTML='<div class="state">Δεν βρέθηκε φορέας στη φράση σου.<br>'+
+    '<span style="font-size:11px">Βάλε και όνομα φορέα/τόπου (π.χ. «…ωρωπου», «…ναουσας»). Φορείς: '+(d.orgCount||0)+'</span></div>'; return; }
+  if(d.mode==='pick'){ renderPick(d); return; }
+  renderResults(d);
+}
+
+function submit(){ const q=box.value.trim(); if(q) run(q); }
+goBtn.addEventListener('click',submit);
+box.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); }});
+
+(function(){ const q=new URLSearchParams(location.search).get('q');
+  if(q){ box.value=q; run(q); } else { box.focus(); } })();
 </script>
 </body></html>
