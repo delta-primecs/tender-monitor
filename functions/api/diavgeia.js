@@ -29,6 +29,27 @@ const MAX_PAGES = 48;                       // stay under the subrequest limit
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
+
+  // ?debug=1 → show the RAW shape of the organizations endpoint so we can see
+  // the real field names (page 0 only, nothing cached).
+  if (url.searchParams.get("debug")) {
+    try {
+      const r = await fetch(ORGS_API + "?page=0&size=5", { headers: { "Accept": "application/json" } });
+      const status = r.status;
+      let d = null; try { d = await r.json(); } catch (e) {}
+      const topKeys = d && typeof d === "object" && !Array.isArray(d) ? Object.keys(d) : [];
+      const arr = Array.isArray(d) ? d : (d && (d.organizations || d.content || d.results)) || [];
+      return json({
+        debug: true, status, topKeys, isArray: Array.isArray(d),
+        batchLen: arr.length,
+        firstOrgKeys: arr[0] ? Object.keys(arr[0]) : [],
+        sample: arr.slice(0, 3),
+      });
+    } catch (e) {
+      return json({ debug: true, error: String(e) }, 502);
+    }
+  }
+
   const q = (url.searchParams.get("q") || "").trim();
   if (!q) return json({ matches: [], q: "" });
 
@@ -93,7 +114,7 @@ async function fetchAllOrgs() {
     const r = await fetch(u, { headers: { "Accept": "application/json" } });
     if (!r.ok) break;
     const d = await r.json();
-    const batch = d.organizations || d.content || d.results || [];
+    const batch = Array.isArray(d) ? d : (d.organizations || d.content || d.results || []);
     if (!batch.length) break;
     for (const o of batch) {
       const uid = (o.uid || o.id || o.organizationId || "").toString();
