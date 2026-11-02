@@ -23,6 +23,10 @@
     font-family:var(--mono);font-weight:700;font-size:12px;text-transform:uppercase;
     letter-spacing:.05em;padding:0 20px;cursor:pointer}
   .searchbar button:hover{background:var(--accent);color:var(--page)}
+  .searchbar select{background:var(--page);border:1px solid var(--hair2);color:var(--text);
+    font-family:var(--mono);font-size:12px;padding:0 10px;outline:none;cursor:pointer}
+  .searchbar select:focus{border-color:var(--accent)}
+  .bar .warn{color:var(--signal,#e8a13a)}
 
   .panel{background:var(--card);border:1px solid var(--hair);border-top:0;min-height:160px;padding:4px 0}
 
@@ -65,6 +69,13 @@
   <div class="searchbar">
     <input id="dq" type="text" autocomplete="off" spellcheck="false"
            placeholder="π.χ.  οικονομικες καταστασεις ωρωπου   ·   ισολογισμος ναουσας">
+    <select id="yrs" title="Πόσα χρόνια πίσω">
+      <option value="1">1 έτος</option>
+      <option value="3">3 έτη</option>
+      <option value="5">5 έτη</option>
+      <option value="10" selected>10 έτη</option>
+      <option value="15">15 έτη</option>
+    </select>
     <button id="go">Αναζήτηση</button>
   </div>
   <div class="panel" id="panel">
@@ -76,6 +87,13 @@
 <script>
 const box=document.getElementById('dq'), goBtn=document.getElementById('go');
 const panel=document.getElementById('panel'), statsEl=document.getElementById('stats');
+const yrsEl=document.getElementById('yrs');
+// remember the chosen period (per viewer, best-effort)
+try{ const v=localStorage.getItem('tr_diav_years'); if(v) yrsEl.value=v; }catch(e){}
+yrsEl.addEventListener('change',()=>{
+  try{ localStorage.setItem('tr_diav_years',yrsEl.value); }catch(e){}
+  const q=box.value.trim(); if(q) run(q);   // re-run with the new period
+});
 
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
@@ -100,6 +118,9 @@ function renderResults(d){
   if(d.topicApplied) bar+='Θέμα «<b>'+esc(d.topic)+'</b>» · '+d.shown+' από '+d.total+' αποφάσεις του φορέα';
   else if(d.topic) bar+='Καμία απόφαση με θέμα «<b>'+esc(d.topic)+'</b>» — δείχνω και τις '+d.total+' πρόσφατες του φορέα';
   else bar+=d.total+' πρόσφατες αποφάσεις του φορέα';
+  if(d.oldest) bar+=' · περίοδος <b>'+esc(d.oldest)+'</b> → <b>'+esc(d.newest||'')+'</b>';
+  if(d.years && d.dateMode==='none')
+    bar+=' · <span class="warn">⚠ η Διαύγεια δεν δέχτηκε φίλτρο ημερομηνίας — μόνο τα πιο πρόσφατα</span>';
   if(d.webUrl) bar+=' · <a href="'+d.webUrl+'" target="_blank" rel="noopener">άνοιγμα στη Διαύγεια ↗</a>';
   bar+='</div>';
   if(!items.length){ panel.innerHTML=bar+'<div class="state">Καμία απόφαση.</div>'; return; }
@@ -125,7 +146,7 @@ async function run(q){
   panel.innerHTML='<div class="state">Αναζήτηση…<br><span style="font-size:11px">(η πρώτη φορά αργεί λίγο — φορτώνει τον κατάλογο φορέων)</span></div>';
   statsEl.textContent='';
   try{
-    const r=await fetch('/api/diavgeia?q='+encodeURIComponent(q)+'&_='+Date.now(),{cache:'no-store'});
+    const r=await fetch('/api/diavgeia?q='+encodeURIComponent(q)+'&years='+yrsEl.value+'&_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
     route(d);
   }catch(e){ panel.innerHTML='<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>'; }
@@ -135,7 +156,8 @@ async function openOrg(uid,label,topic){
   panel.innerHTML='<div class="state">Φόρτωση αποφάσεων του φορέα…</div>';
   try{
     const r=await fetch('/api/diavgeia?uid='+encodeURIComponent(uid)+
-      '&topic='+encodeURIComponent(topic||'')+'&label='+encodeURIComponent(label||'')+'&_='+Date.now(),{cache:'no-store'});
+      '&topic='+encodeURIComponent(topic||'')+'&label='+encodeURIComponent(label||'')+
+      '&years='+yrsEl.value+'&_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
     route(d);
   }catch(e){ panel.innerHTML='<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>'; }
