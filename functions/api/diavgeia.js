@@ -14,11 +14,12 @@
  * ------------------------------------------------------------
  */
 
-// The advanced endpoint — the one the website and our own ingester use. It
-// takes a Lucene query over fields (bare free-text gets HTTP 400, and the
-// classic /opendata/search only ORs words so it matches millions). We build a
-// proper subject:(… AND …) query below, so results are few and relevant.
-const API = "https://diavgeia.gov.gr/luminapi/opendata/search/advanced";
+// Classic full-text endpoint. It DOES search the whole decision text and DOES
+// return results (the advanced endpoint rejected a subject:(…) query → 0). The
+// trick is the operator: this server decodes "+" in the URL as a space, so the
+// Lucene "+term" required-operator silently became OR. We use the explicit
+// "AND" keyword instead (survives URL decoding) + trailing "*" stems.
+const API = "https://diavgeia.gov.gr/opendata/search";
 const SIZE = 30;
 
 export async function onRequestGet(context) {
@@ -28,12 +29,12 @@ export async function onRequestGet(context) {
 
   if (!q) return json({ total: 0, page: 0, q: "", items: [] });
 
-  // Build subject:(stem* AND stem* …) so a decision must contain EVERY word
-  // (not any), with stems so Greek inflections match (ΤΑΜΕΙΟ ↔ ΤΑΜΕΙΟΥ).
+  // Build  stem* AND stem* AND …  so a decision must contain EVERY word (not
+  // any), with stems so Greek inflections match (ΤΑΜΕΙΟ ↔ ΤΑΜΕΙΟΥ).
   const lucene = buildQuery(q);
 
   const api = API + "?q=" + encodeURIComponent(lucene) +
-              "&size=" + SIZE + "&page=" + page + "&sort=recent";
+              "&size=" + SIZE + "&page=" + page;
 
   let data;
   try {
@@ -76,9 +77,9 @@ export async function onRequestGet(context) {
 }
 
 // Turn "ΟΙΚΟΝΟΜΙΚΕΣ ΚΑΤΑΣΤΑΣΕΙΣ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ" into
-//   subject:(ΟΙΚΟΝΟΜΙΚ* AND ΚΑΤΑΣΤΑΣΕ* AND ΤΑΜΕ* AND ΣΚΑΛ* AND ΩΡΩΠ*)
-// • subject: the decision title field (the advanced endpoint needs a field).
-// • AND: every word must appear, so we stop matching millions of unrelated acts.
+//   ΟΙΚΟΝΟΜΙΚ* AND ΚΑΤΑΣΤΑΣΕ* AND ΤΑΜΕ* AND ΣΚΑΛ* AND ΩΡΩΠ*
+// • AND: every word must appear, so we stop matching millions of unrelated acts
+//   (the "AND" keyword survives URL decoding; a leading "+" would not).
 // • stem*: trim the last couple of letters and add a wildcard, so Greek case
 //   endings still match (ΤΑΜΕΙΟ finds ΤΑΜΕΙΟΥ, ΟΙΚΟΝΟΜΙΚΕΣ finds ΟΙΚΟΝΟΜΙΚΩΝ).
 function buildQuery(raw) {
@@ -87,7 +88,7 @@ function buildQuery(raw) {
     .split(/\s+/)
     .filter(Boolean);
   if (!terms.length) return "";
-  return "subject:(" + terms.map(stem).join(" AND ") + ")";
+  return terms.map(stem).join(" AND ");
 }
 
 function stem(t) {
