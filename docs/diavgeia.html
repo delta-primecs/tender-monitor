@@ -125,7 +125,7 @@ async function run(q){
   panel.innerHTML='<div class="state">Αναζήτηση…<br><span style="font-size:11px">(η πρώτη φορά αργεί λίγο — φορτώνει τον κατάλογο φορέων)</span></div>';
   statsEl.textContent='';
   try{
-    const r=await fetch('/api/diavgeia?q='+encodeURIComponent(q),{cache:'no-store'});
+    const r=await fetch('/api/diavgeia?q='+encodeURIComponent(q)+'&_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
     route(d);
   }catch(e){ panel.innerHTML='<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>'; }
@@ -135,7 +135,7 @@ async function openOrg(uid,label,topic){
   panel.innerHTML='<div class="state">Φόρτωση αποφάσεων του φορέα…</div>';
   try{
     const r=await fetch('/api/diavgeia?uid='+encodeURIComponent(uid)+
-      '&topic='+encodeURIComponent(topic||'')+'&label='+encodeURIComponent(label||''),{cache:'no-store'});
+      '&topic='+encodeURIComponent(topic||'')+'&label='+encodeURIComponent(label||'')+'&_='+Date.now(),{cache:'no-store'});
     const d=await r.json();
     route(d);
   }catch(e){ panel.innerHTML='<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>'; }
