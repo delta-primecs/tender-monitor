@@ -27,8 +27,13 @@ export async function onRequestGet(context) {
 
   if (!q) return json({ total: 0, page: 0, q: "", items: [] });
 
+  // The endpoint ORs free-text words by default, so a plain multi-word query
+  // matches millions (every doc with ANY common word). Require ALL words with
+  // the Lucene "+" operator so only decisions containing every word come back.
+  const lucene = buildQuery(q);
+
   // Only the params the classic endpoint is known to accept for free text.
-  const api = API + "?q=" + encodeURIComponent(q) +
+  const api = API + "?q=" + encodeURIComponent(lucene) +
               "&size=" + SIZE + "&page=" + page;
 
   let data;
@@ -68,7 +73,19 @@ export async function onRequestGet(context) {
     (data.info && (data.info.total ?? data.info.actualSize)) ??
     data.total ?? data.numFound ?? items.length;
 
-  return json({ total, page, q, size: SIZE, items });
+  return json({ total, page, q, sent: lucene, size: SIZE, items });
+}
+
+// Turn "ΟΙΚΟΝΟΜΙΚΕΣ ΚΑΤΑΣΤΑΣΕΙΣ ΛΙΜΕΝΙΚΟ ΤΑΜΕΙΟ" into "+ΟΙΚΟΝΟΜΙΚΕΣ +ΚΑΤΑΣΤΑΣΕΙΣ
+// +ΛΙΜΕΝΙΚΟ +ΤΑΜΕΙΟ" so every word is required (AND), not OR. Lucene special
+// characters are stripped so a stray symbol can't break the query.
+function buildQuery(raw) {
+  const terms = raw
+    .replace(/[+\-!(){}\[\]^"~*?:\\/&|]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!terms.length) return raw;
+  return terms.map((t) => "+" + t).join(" ");
 }
 
 function orgName(d) {
