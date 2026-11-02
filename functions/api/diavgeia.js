@@ -24,7 +24,7 @@ const DECIS_WEB = "https://diavgeia.gov.gr/search";
 const CACHE_KEY = "diavgeia:orgindex:v1";
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // a week
 const PAGE_SIZE = 500;
-const MAX_PAGES = 48;                       // stay under the subrequest limit
+const MAX_PAGES = 12;                       // each page is ~5400 orgs; a few cover all
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -109,19 +109,29 @@ async function loadOrgs(env) {
 
 async function fetchAllOrgs() {
   const out = [];
+  const seen = new Set();
   for (let page = 0; page < MAX_PAGES; page++) {
-    const u = ORGS_API + "?page=" + page + "&size=" + PAGE_SIZE;
-    const r = await fetch(u, { headers: { "Accept": "application/json" } });
+    let r;
+    try { r = await fetch(ORGS_API + "?page=" + page + "&size=" + PAGE_SIZE,
+                          { headers: { "Accept": "application/json" } }); }
+    catch (e) { break; }
     if (!r.ok) break;
     const d = await r.json();
     const batch = Array.isArray(d) ? d : (d.organizations || d.content || d.results || []);
     if (!batch.length) break;
+    let added = 0;
     for (const o of batch) {
       const uid = (o.uid || o.id || o.organizationId || "").toString();
       const label = (o.label || o.name || "").toString();
-      if (uid && label) out.push({ u: uid, l: label, n: deAccent(label) });
+      if (uid && label && !seen.has(uid)) {
+        seen.add(uid);
+        out.push({ u: uid, l: label, n: deAccent(label) });
+        added++;
+      }
     }
-    if (batch.length < PAGE_SIZE) break;
+    // Stop at the last page, OR when the server ignores ?page= and just repeats
+    // the same batch (no new orgs added) — the endpoint ignores ?size= too.
+    if (added === 0) break;
   }
   return out;
 }
