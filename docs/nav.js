@@ -30,10 +30,12 @@
   function isDiavHead(s) { return DIAV_CODES.includes(deAccent(s)); }
   function openDiavgeia(term) {
     const url = "diavgeia.html" + (term ? "?q=" + encodeURIComponent(term) : "");
-    // Named window → one Διαύγεια window that updates on each new search,
-    // instead of a new window every time.
-    window.open(url, "tr_diavgeia",
+    // One named Διαύγεια window reused across searches. A reused window is not
+    // reliably re-navigated by window.open alone, so we force it to the new URL
+    // (and focus it) — otherwise it keeps showing the previous search.
+    const w = window.open(url, "tr_diavgeia",
       "width=1180,height=940,left=90,top=40,scrollbars=yes,resizable=yes");
+    if (w) { try { w.location.href = url; w.focus(); } catch (e) {} }
   }
   // If v is a Διαύγεια command, return its term ("" when no term); else null.
   function externalTerm(v) {
