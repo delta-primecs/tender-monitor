@@ -15,11 +15,12 @@
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
 
   // ── Διαύγεια: free-text search opened in a SEPARATE window ───────────────
-  // Type "DIAV <όροι>" (also ΔΙΑΥΓΕΙΑ / DY) in the command bar and the real
-  // Διαύγεια portal opens in its own window, showing the results for those
-  // words — e.g.  DIAV οικονομικές καταστάσεις λιμενικό ταμείο σκάλας ωρωπού.
-  // Opening the official site in a popup sidesteps its embedding block (the
-  // portal refuses to load inside an iframe), so this always works.
+  // Type "DIAV <όροι>" (also ΔΙΑΥΓΕΙΑ / DY) in the command bar and our own
+  // Διαύγεια results page opens in its own window, showing the decisions for
+  // those words — e.g.  DIAV οικονομικές καταστάσεις λιμενικό ταμείο σκάλας ωρωπού.
+  // It calls /api/diavgeia (server-side proxy to the Διαύγεια OpenData API),
+  // because the Διαύγεια website itself does NOT run a free-text search from a
+  // deep link. Our page always works and renders the results in Gödel style.
   const DIAV_CODES = ["DIAV", "DIAVGEIA", "ΔΙΑΥΓΕΙΑ", "DY"];
   // Accent-proof: "διαύγεια" (with tonos) upper-cases to "ΔΙΑΎΓΕΙΑ", so strip
   // diacritics before matching the command codes.
@@ -28,14 +29,11 @@
   }
   function isDiavHead(s) { return DIAV_CODES.includes(deAccent(s)); }
   function openDiavgeia(term) {
-    const base = "https://diavgeia.gov.gr/search";
-    const url = term
-      ? base + "?query=" + encodeURIComponent(term) + "&sort=recent&page=0"
-      : base;
+    const url = "diavgeia.html" + (term ? "?q=" + encodeURIComponent(term) : "");
     // Named window → one Διαύγεια window that updates on each new search,
     // instead of a new window every time.
     window.open(url, "tr_diavgeia",
-      "width=1120,height=920,left=100,top=50,scrollbars=yes,resizable=yes");
+      "width=1180,height=940,left=90,top=40,scrollbars=yes,resizable=yes");
   }
   // If v is a Διαύγεια command, return its term ("" when no term); else null.
   function externalTerm(v) {
