@@ -29,8 +29,20 @@ const CACHE_KEY = "diavgeia:orgindex:v1";
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000;
 const PAGE_SIZE = 500;
 const MAX_ORG_PAGES = 12;
-const DECISION_PAGES = 3;   // up to 3×100 = 300 recent decisions per φορέας
 const DECISION_SIZE = 100;
+const PER_YEAR_PAGES = 3;   // up to 300 decisions per year per φορέας
+const FALLBACK_PAGES = 10;  // if no date syntax works: 1000 most recent
+const DEFAULT_YEARS = 10;
+const MAX_YEARS = 15;       // keeps us well under the 50-subrequest limit
+
+// Candidate date-range syntaxes for the advanced endpoint. We don't know for
+// sure which one Διαύγεια accepts, so we test them and keep the first that
+// returns results.
+const DATE_SYNTAXES = [
+  { id: "DT",  build: (a, b) => "issueDate:[DT(" + a + "T00:00:00) TO DT(" + b + "T23:59:59)]" },
+  { id: "ISO", build: (a, b) => "issueDate:[" + a + "T00:00:00Z TO " + b + "T23:59:59Z]" },
+  { id: "DAY", build: (a, b) => "issueDate:[" + a + " TO " + b + "]" },
+];
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -39,11 +51,14 @@ export async function onRequestGet(context) {
   if (url.searchParams.get("debug")) return debugOrgs();
 
   // ── Step 2: a φορέας is chosen → fetch & topic-filter its decisions ──
+  const years = Math.min(MAX_YEARS, Math.max(0,
+    parseInt(url.searchParams.get("years") || String(DEFAULT_YEARS), 10) || DEFAULT_YEARS));
+
   const uid = (url.searchParams.get("uid") || "").trim();
   if (uid) {
     const topic = (url.searchParams.get("topic") || "").trim();
     const label = (url.searchParams.get("label") || "").trim();
-    const res = await orgDecisions(uid, topic);
+    const res = await orgDecisions(uid, topic, years);
     res.org = { uid, label };
     return json(res);
   }
@@ -75,7 +90,7 @@ export async function onRequestGet(context) {
   const decisive = top.score >= 2 && (!second || top.score > second.score);
 
   if (decisive) {
-    const res = await orgDecisions(top.uid, topic);
+    const res = await orgDecisions(top.uid, topic, years);
     res.org = { uid: top.uid, label: top.label };
     return json(res);
   }
@@ -88,24 +103,68 @@ export async function onRequestGet(context) {
 }
 
 // ── fetch a φορέας's decisions, filter by topic words ───────────────────────
-async function orgDecisions(uid, topic) {
+async function orgDecisions(uid, topic, years) {
   const stems = tokenize(topic).map(stem);
+  const orgClause = 'organizationUid:"' + uid + '"';
+  const seen = new Set();
   const items = [];
-  let apiErr = null, tried = "";
-  for (let page = 0; page < DECISION_PAGES; page++) {
-    tried = SEARCH_API + "?q=" + encodeURIComponent('organizationUid:"' + uid + '"') +
-            "&size=" + DECISION_SIZE + "&page=" + page + "&sort=recent";
-    let r;
-    try { r = await fetch(tried, { headers: { "Accept": "application/json" } }); }
-    catch (e) { apiErr = "σφάλμα δικτύου"; break; }
-    if (!r.ok) { if (page === 0) apiErr = "Διαύγεια HTTP " + r.status; break; }
-    const d = await r.json();
-    const decisions = d.decisions || d.results || [];
-    if (!decisions.length) break;
-    for (const dec of decisions) items.push(mapDecision(dec));
-    if (decisions.length < DECISION_SIZE) break;
+  const add = (decs) => {
+    for (const dec of decs) {
+      const it = mapDecision(dec);
+      const key = it.ada || (it.subject + it.date);
+      if (!seen.has(key)) { seen.add(key); items.push(it); }
+    }
+  };
+
+  const now = new Date();
+  const thisYear = now.getUTCFullYear();
+  const today = now.toISOString().slice(0, 10);
+  let dateMode = "none", apiErr = null, tried = "";
+
+  // 1) Find a date syntax Διαύγεια accepts (cheap test: size=1 over the range).
+  let syntax = null;
+  if (years > 0) {
+    const from = (thisYear - years + 1) + "-01-01";
+    for (const s of DATE_SYNTAXES) {
+      const q = orgClause + " AND " + s.build(from, today);
+      const res = await searchPage(q, 0, 1);
+      if (res.ok && res.decisions.length) { syntax = s; dateMode = s.id; break; }
+    }
+  }
+
+  if (syntax) {
+    // 2) Fetch YEAR BY YEAR so old years are covered, not just the latest 300.
+    const tasks = [];
+    for (let y = thisYear; y > thisYear - years; y--) {
+      const a = y + "-01-01";
+      const b = y === thisYear ? today : y + "-12-31";
+      const q = orgClause + " AND " + syntax.build(a, b);
+      tasks.push((async () => {
+        for (let p = 0; p < PER_YEAR_PAGES; p++) {
+          const res = await searchPage(q, p, DECISION_SIZE);
+          if (!res.ok || !res.decisions.length) break;
+          add(res.decisions);
+          if (res.decisions.length < DECISION_SIZE) break;
+        }
+      })());
+    }
+    await Promise.all(tasks);
+  } else {
+    // 3) No date syntax worked → most recent decisions, as many pages as allowed.
+    for (let p = 0; p < FALLBACK_PAGES; p++) {
+      const res = await searchPage(orgClause, p, DECISION_SIZE);
+      tried = res.url;
+      if (!res.ok) { if (p === 0) apiErr = res.err; break; }
+      if (!res.decisions.length) break;
+      add(res.decisions);
+      if (res.decisions.length < DECISION_SIZE) break;
+    }
   }
   if (apiErr && !items.length) return { mode: "results", items: [], error: apiErr, tried };
+
+  items.sort((x, y) => (y.date || "").localeCompare(x.date || ""));
+  const dates = items.map((i) => i.date).filter(Boolean).sort();
+  const oldest = dates[0] || null, newest = dates[dates.length - 1] || null;
 
   let shown = items, topicApplied = false;
   if (stems.length) {
@@ -120,9 +179,24 @@ async function orgDecisions(uid, topic) {
     topic, topicApplied,
     total: items.length, shown: shown.length,
     items: shown,
+    years, dateMode, oldest, newest,
     webUrl: DECIS_WEB + "?query=" + encodeURIComponent('organizationUid:"' + uid + '"') +
             "&sort=recent&page=0",
   };
+}
+
+// One page of the advanced search. Never throws.
+async function searchPage(q, page, size) {
+  const url = SEARCH_API + "?q=" + encodeURIComponent(q) +
+              "&size=" + size + "&page=" + page + "&sort=recent";
+  try {
+    const r = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!r.ok) return { ok: false, err: "Διαύγεια HTTP " + r.status, url, decisions: [] };
+    const d = await r.json();
+    return { ok: true, url, decisions: d.decisions || d.results || [] };
+  } catch (e) {
+    return { ok: false, err: "σφάλμα δικτύου", url, decisions: [] };
+  }
 }
 
 function mapDecision(d) {
