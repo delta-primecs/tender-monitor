@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="el"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Διαύγεια · DeltaPrime</title>
+<link rel="stylesheet" href="godel.css">
+<style>
+  .wrap{max-width:none;margin:0 auto}
+  .deskbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--hair);padding:8px 14px}
+  .db-title{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--bright);
+    letter-spacing:.06em;text-transform:uppercase}
+  .db-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+    padding-left:14px;border-left:1px solid var(--hair2)}
+
+  .searchbar{display:flex;gap:8px;padding:12px 14px;background:var(--card);
+    border:1px solid var(--hair);border-top:0}
+  .searchbar input{flex:1;background:var(--page);border:1px solid var(--hair2);
+    color:var(--text);font-family:var(--mono);font-size:14px;padding:11px 12px;outline:none}
+  .searchbar input:focus{border-color:var(--accent)}
+  .searchbar button{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
+    font-family:var(--mono);font-weight:700;font-size:12px;text-transform:uppercase;
+    letter-spacing:.05em;padding:0 20px;cursor:pointer}
+  .searchbar button:hover{background:var(--accent);color:var(--page)}
+
+  .panel{background:var(--card);border:1px solid var(--hair);border-top:0;
+    min-height:160px;padding:6px 0}
+  .row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--hair);
+    cursor:pointer;text-decoration:none}
+  .row:last-child{border-bottom:0}
+  .row:hover{background:var(--panel)}
+  .row .name{color:var(--bright);font-size:13.5px;font-weight:600;flex:1;line-height:1.4}
+  .row .uid{color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .row .open{color:var(--accent);font-size:11px;border:1px solid var(--accent);
+    padding:4px 11px;border-radius:5px;white-space:nowrap}
+  .row.best .name::after{content:"ακριβέστερο";margin-left:10px;color:var(--accent);
+    font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle;
+    border:1px solid var(--accent-dim);padding:1px 6px;border-radius:4px}
+
+  .state{color:var(--muted);font-size:12.5px;text-align:center;padding:40px 16px;line-height:1.7}
+  .state b{color:var(--text)}
+  .hint{color:var(--muted);font-size:11px;padding:10px 16px;border-top:1px solid var(--hair)}
+  .hint code{color:var(--accent)}
+</style></head><body>
+<div id="nav"></div>
+<div class="wrap">
+  <div class="deskbar">
+    <span class="db-title">ΔΙΑΥΓΕΙΑ</span>
+    <span class="db-sub">Αναζήτηση ανά φορέα → αποφάσεις</span>
+  </div>
+  <div class="searchbar">
+    <input id="dq" type="text" autocomplete="off" spellcheck="false"
+           placeholder="Όνομα φορέα  —  π.χ.  ΛΙΜΕΝΙΚΟ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ">
+    <button id="go">Εύρεση φορέα</button>
+  </div>
+  <div class="panel" id="panel">
+    <div class="state">Γράψε το όνομα ενός φορέα (Δήμος, Λιμενικό Ταμείο, ΝΠΔΔ…)<br>
+      και άνοιξε τις αποφάσεις του στη Διαύγεια, με τα φίλτρα της έτοιμα.</div>
+  </div>
+  <div class="hint">Η ελεύθερη αναζήτηση λέξεων στη Διαύγεια φέρνει χιλιάδες άσχετα· η αναζήτηση
+    <b>ανά φορέα</b> είναι ο καθαρός τρόπος. Μέσα στη Διαύγεια, στένεψε με το <code>Είδος</code>
+    (π.χ. ΙΣΟΛΟΓΙΣΜΟΣ – ΑΠΟΛΟΓΙΣΜΟΣ) από τα φίλτρα αριστερά.</div>
+</div>
+<script src="nav.js"></script>
+<script>
+const box = document.getElementById('dq');
+const goBtn = document.getElementById('go');
+const panel = document.getElementById('panel');
+
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function rowHtml(m, best){
+  return '<a class="row'+(best?' best':'')+'" href="'+m.url+'" target="_blank" rel="noopener">'+
+    '<span class="name">'+esc(m.label)+'</span>'+
+    '<span class="uid">UID '+esc(String(m.uid))+'</span>'+
+    '<span class="open">Αποφάσεις ↗</span></a>';
+}
+
+async function run(q){
+  if(!q) return;
+  panel.innerHTML = '<div class="state">Αναζήτηση φορέα…<br>'+
+    '<span style="font-size:11px">(η πρώτη φορά αργεί λίγο — φορτώνει & αποθηκεύει τη λίστα φορέων)</span></div>';
+  try{
+    const r = await fetch('/api/diavgeia?q='+encodeURIComponent(q), {cache:'no-store'});
+    const d = await r.json();
+    if(d.error){
+      panel.innerHTML = '<div class="state">Σφάλμα: '+esc(d.error)+
+        '<br><span style="font-size:11px">Αν μόλις στήθηκε, κάνε redeploy στο Cloudflare Pages.</span></div>';
+      return;
+    }
+    const matches = d.matches || [];
+    if(!matches.length){
+      panel.innerHTML = '<div class="state">Κανένας φορέας δεν ταιριάζει με <b>'+esc(q)+'</b>.<br>'+
+        'Δοκίμασε πιο συγκεκριμένο όνομα (π.χ. «ΔΗΜΟΣ ΝΑΟΥΣΑΣ», «ΛΙΜΕΝΙΚΟ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ»).</div>';
+      return;
+    }
+    // One clearly-best match → go straight to its Διαύγεια page.
+    const top = matches[0], second = matches[1];
+    const decisive = matches.length === 1 ||
+                     (top.score >= 2 && (!second || top.score > second.score));
+    if(decisive){
+      panel.innerHTML = '<div class="state">Βρέθηκε: <b>'+esc(top.label)+'</b><br>'+
+        '<span style="font-size:11px">Άνοιγμα αποφάσεων στη Διαύγεια…</span></div>';
+      window.location.href = top.url;
+      return;
+    }
+    // Several candidates → let the user pick.
+    panel.innerHTML =
+      '<div class="hint" style="border:0">'+matches.length+' πιθανοί φορείς — διάλεξε:</div>'+
+      matches.map((m,i)=>rowHtml(m, i===0)).join('');
+  }catch(e){
+    panel.innerHTML = '<div class="state">Πρόβλημα δικτύου. Δοκίμασε ξανά.</div>';
+  }
+}
+
+function submit(){ const q = box.value.trim(); if(q) run(q); }
+goBtn.addEventListener('click', submit);
+box.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); }});
+
+// Opened as diavgeia.html?q=…  (from the DIAV command) → search immediately.
+(function(){
+  const q = new URLSearchParams(location.search).get('q');
+  if(q){ box.value = q; run(q); }
+  else { box.focus(); }
+})();
+</script>
+</body></html>
