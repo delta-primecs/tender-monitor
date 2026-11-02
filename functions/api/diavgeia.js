@@ -14,10 +14,11 @@
  * ------------------------------------------------------------
  */
 
-// Classic OpenData full-text endpoint — this one DOES accept plain free-text
-// `q`. (The newer luminapi .../search/advanced wants structured field queries
-// like cpv:"…" and returns HTTP 400 for bare words.)
-const API = "https://diavgeia.gov.gr/opendata/search";
+// The advanced endpoint — the one the website and our own ingester use. It
+// takes a Lucene query over fields (bare free-text gets HTTP 400, and the
+// classic /opendata/search only ORs words so it matches millions). We build a
+// proper subject:(… AND …) query below, so results are few and relevant.
+const API = "https://diavgeia.gov.gr/luminapi/opendata/search/advanced";
 const SIZE = 30;
 
 export async function onRequestGet(context) {
@@ -27,14 +28,12 @@ export async function onRequestGet(context) {
 
   if (!q) return json({ total: 0, page: 0, q: "", items: [] });
 
-  // The endpoint ORs free-text words by default, so a plain multi-word query
-  // matches millions (every doc with ANY common word). Require ALL words with
-  // the Lucene "+" operator so only decisions containing every word come back.
+  // Build subject:(stem* AND stem* …) so a decision must contain EVERY word
+  // (not any), with stems so Greek inflections match (ΤΑΜΕΙΟ ↔ ΤΑΜΕΙΟΥ).
   const lucene = buildQuery(q);
 
-  // Only the params the classic endpoint is known to accept for free text.
   const api = API + "?q=" + encodeURIComponent(lucene) +
-              "&size=" + SIZE + "&page=" + page;
+              "&size=" + SIZE + "&page=" + page + "&sort=recent";
 
   let data;
   try {
@@ -76,16 +75,25 @@ export async function onRequestGet(context) {
   return json({ total, page, q, sent: lucene, size: SIZE, items });
 }
 
-// Turn "ΟΙΚΟΝΟΜΙΚΕΣ ΚΑΤΑΣΤΑΣΕΙΣ ΛΙΜΕΝΙΚΟ ΤΑΜΕΙΟ" into "+ΟΙΚΟΝΟΜΙΚΕΣ +ΚΑΤΑΣΤΑΣΕΙΣ
-// +ΛΙΜΕΝΙΚΟ +ΤΑΜΕΙΟ" so every word is required (AND), not OR. Lucene special
-// characters are stripped so a stray symbol can't break the query.
+// Turn "ΟΙΚΟΝΟΜΙΚΕΣ ΚΑΤΑΣΤΑΣΕΙΣ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ" into
+//   subject:(ΟΙΚΟΝΟΜΙΚ* AND ΚΑΤΑΣΤΑΣΕ* AND ΤΑΜΕ* AND ΣΚΑΛ* AND ΩΡΩΠ*)
+// • subject: the decision title field (the advanced endpoint needs a field).
+// • AND: every word must appear, so we stop matching millions of unrelated acts.
+// • stem*: trim the last couple of letters and add a wildcard, so Greek case
+//   endings still match (ΤΑΜΕΙΟ finds ΤΑΜΕΙΟΥ, ΟΙΚΟΝΟΜΙΚΕΣ finds ΟΙΚΟΝΟΜΙΚΩΝ).
 function buildQuery(raw) {
   const terms = raw
-    .replace(/[+\-!(){}\[\]^"~*?:\\/&|]/g, " ")
+    .replace(/[+\-!(){}\[\]^"~?:\\/&|*]/g, " ")
     .split(/\s+/)
     .filter(Boolean);
-  if (!terms.length) return raw;
-  return terms.map((t) => "+" + t).join(" ");
+  if (!terms.length) return "";
+  return "subject:(" + terms.map(stem).join(" AND ") + ")";
+}
+
+function stem(t) {
+  if (t.length >= 6) return t.slice(0, t.length - 2) + "*";
+  if (t.length >= 4) return t.slice(0, t.length - 1) + "*";
+  return t; // too short to trim safely
 }
 
 function orgName(d) {
