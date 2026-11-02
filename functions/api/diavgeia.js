@@ -14,7 +14,10 @@
  * ------------------------------------------------------------
  */
 
-const API = "https://diavgeia.gov.gr/luminapi/opendata/search/advanced";
+// Classic OpenData full-text endpoint — this one DOES accept plain free-text
+// `q`. (The newer luminapi .../search/advanced wants structured field queries
+// like cpv:"…" and returns HTTP 400 for bare words.)
+const API = "https://diavgeia.gov.gr/opendata/search";
 const SIZE = 30;
 
 export async function onRequestGet(context) {
@@ -24,8 +27,9 @@ export async function onRequestGet(context) {
 
   if (!q) return json({ total: 0, page: 0, q: "", items: [] });
 
+  // Only the params the classic endpoint is known to accept for free text.
   const api = API + "?q=" + encodeURIComponent(q) +
-              "&size=" + SIZE + "&page=" + page + "&sort=recent";
+              "&size=" + SIZE + "&page=" + page;
 
   let data;
   try {
@@ -33,7 +37,11 @@ export async function onRequestGet(context) {
       headers: { "Accept": "application/json" },
       cf: { cacheTtl: 0 },
     });
-    if (!r.ok) return json({ error: "Διαύγεια HTTP " + r.status, items: [] }, 502);
+    if (!r.ok) {
+      let detail = "";
+      try { detail = (await r.text()).slice(0, 300); } catch (e) {}
+      return json({ error: "Διαύγεια HTTP " + r.status, detail, tried: api, items: [] }, 502);
+    }
     data = await r.json();
   } catch (e) {
     return json({ error: "Αδυναμία σύνδεσης με τη Διαύγεια", items: [] }, 502);
