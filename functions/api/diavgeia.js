@@ -1,124 +1,123 @@
 /**
- * Cloudflare PAGES FUNCTION — Διαύγεια full-text search proxy
+ * Cloudflare PAGES FUNCTION — Διαύγεια φορέας resolver
  * ------------------------------------------------------------
- * File location in repo:  functions/api/diavgeia.js
- * Cloudflare Pages routes this to:  /api/diavgeia
+ * File location in repo:  functions/api/diavgeia.js   →  /api/diavgeia
  *
- * Why a proxy: the Διαύγεια website (the Angular SPA) does NOT run a free-text
- * search from a URL you deep-link to, and its OpenData API cannot be called
- * straight from the browser (CORS). So we call the SAME OpenData endpoint the
- * ingester already uses, but SERVER-SIDE here on the edge, and hand the page
- * back clean JSON. No KV, no secrets, nothing else touched.
+ * Why this shape: Διαύγεια's free-text search is useless (it ORs words and
+ * matches millions). What actually returns clean results — as the Διαύγεια UI
+ * itself does — is filtering by ΦΟΡΕΑ (organizationUid). So this endpoint takes
+ * the words the user typed, finds the matching organisation(s), and hands back
+ * a ready Διαύγεια deep-link filtered to that φορέα (which DOES work:
+ *   https://diavgeia.gov.gr/search?query=organizationUid:"55028"&sort=recent ).
  *
- *   GET /api/diavgeia?q=<ελεύθερο κείμενο>&page=0  → { total, page, q, items:[…] }
+ *   GET /api/diavgeia?q=<όνομα φορέα>  → { matches:[{uid,label,score,url}], … }
+ *
+ * The full organisation list is fetched once from the Διαύγεια OpenData API
+ * (the same endpoint resolve_orgs.py uses) and cached in the CHAT KV namespace
+ * so later searches are instant. No new binding needed if CHAT is already bound;
+ * without it, it just fetches each time.
  * ------------------------------------------------------------
  */
 
-// Classic full-text endpoint. It DOES search the whole decision text and DOES
-// return results (the advanced endpoint rejected a subject:(…) query → 0). The
-// trick is the operator: this server decodes "+" in the URL as a space, so the
-// Lucene "+term" required-operator silently became OR. We use the explicit
-// "AND" keyword instead (survives URL decoding) + trailing "*" stems.
-const API = "https://diavgeia.gov.gr/opendata/search";
-const SIZE = 30;
+const ORGS_API = "https://diavgeia.gov.gr/luminapi/opendata/organizations";
+const DECIS_WEB = "https://diavgeia.gov.gr/search";
+const CACHE_KEY = "diavgeia:orgindex:v1";
+const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // a week
+const PAGE_SIZE = 500;
+const MAX_PAGES = 48;                       // stay under the subrequest limit
 
 export async function onRequestGet(context) {
-  const url = new URL(context.request.url);
+  const { request, env } = context;
+  const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim();
-  const page = Math.max(0, parseInt(url.searchParams.get("page") || "0", 10) || 0);
+  if (!q) return json({ matches: [], q: "" });
 
-  if (!q) return json({ total: 0, page: 0, q: "", items: [] });
-
-  // Build  stem* AND stem* AND …  so a decision must contain EVERY word (not
-  // any), with stems so Greek inflections match (ΤΑΜΕΙΟ ↔ ΤΑΜΕΙΟΥ).
-  const lucene = buildQuery(q);
-
-  const api = API + "?q=" + encodeURIComponent(lucene) +
-              "&size=" + SIZE + "&page=" + page;
-
-  let data;
+  let orgs;
   try {
-    const r = await fetch(api, {
-      headers: { "Accept": "application/json" },
-      cf: { cacheTtl: 0 },
-    });
-    if (!r.ok) {
-      let detail = "";
-      try { detail = (await r.text()).slice(0, 300); } catch (e) {}
-      return json({ error: "Διαύγεια HTTP " + r.status, detail, tried: api, items: [] }, 502);
-    }
-    data = await r.json();
+    orgs = await loadOrgs(env);
   } catch (e) {
-    return json({ error: "Αδυναμία σύνδεσης με τη Διαύγεια", items: [] }, 502);
+    return json({ error: "Αδυναμία φόρτωσης φορέων από τη Διαύγεια", matches: [] }, 502);
+  }
+  if (!orgs.length) {
+    return json({ error: "Δεν φορτώθηκε η λίστα φορέων της Διαύγειας", matches: [] }, 502);
   }
 
-  const decisions = data.decisions || data.results || [];
-  const items = decisions.map((d) => {
-    const ada = (d.ada || d.ADA || d.adam || "").toString();
-    const enc = ada ? encodeURIComponent(ada) : "";
-    return {
-      ada,
-      subject: (d.subject || d.subjectText || "(χωρίς θέμα)").toString().replace(/\s+/g, " ").trim(),
-      org: orgName(d),
-      type: (d.documentTypeLabel || (d.documentType && d.documentType.label) || "").toString(),
-      date: toDate(d.publishTimestamp || d.issueDate || d.submissionTimestamp || d.publicationDate),
-      // Per Διαύγεια: the ΑΔΑ is Greek text and /doc/ needs it percent-encoded,
-      // otherwise it serves a broken redirect.
-      view: enc ? "https://diavgeia.gov.gr/decision/view/" + enc : null,
-      doc: enc ? "https://diavgeia.gov.gr/doc/" + enc : null,
-    };
-  });
+  const tokens = tokenize(q);
+  if (!tokens.length) return json({ q, matches: [], note: "πολύ γενικοί όροι" });
 
-  const total =
-    (data.info && (data.info.total ?? data.info.actualSize)) ??
-    data.total ?? data.numFound ?? items.length;
-
-  return json({ total, page, q, sent: lucene, size: SIZE, items });
-}
-
-// Turn "ΟΙΚΟΝΟΜΙΚΕΣ ΚΑΤΑΣΤΑΣΕΙΣ ΤΑΜΕΙΟ ΣΚΑΛΑΣ ΩΡΩΠΟΥ" into
-//   ΟΙΚΟΝΟΜΙΚ* AND ΚΑΤΑΣΤΑΣΕ* AND ΤΑΜΕ* AND ΣΚΑΛ* AND ΩΡΩΠ*
-// • AND: every word must appear, so we stop matching millions of unrelated acts
-//   (the "AND" keyword survives URL decoding; a leading "+" would not).
-// • stem*: trim the last couple of letters and add a wildcard, so Greek case
-//   endings still match (ΤΑΜΕΙΟ finds ΤΑΜΕΙΟΥ, ΟΙΚΟΝΟΜΙΚΕΣ finds ΟΙΚΟΝΟΜΙΚΩΝ).
-function buildQuery(raw) {
-  const terms = raw
-    .replace(/[+\-!(){}\[\]^"~?:\\/&|*]/g, " ")
-    .split(/\s+/)
-    .filter(Boolean);
-  if (!terms.length) return "";
-  return terms.map(stem).join(" AND ");
-}
-
-function stem(t) {
-  if (t.length >= 6) return t.slice(0, t.length - 2) + "*";
-  if (t.length >= 4) return t.slice(0, t.length - 1) + "*";
-  return t; // too short to trim safely
-}
-
-function orgName(d) {
-  // The API sometimes gives a name, sometimes only an id — show whatever we have.
-  if (d.organization && typeof d.organization === "object")
-    return (d.organization.label || d.organization.value || d.organization.name || "").toString();
-  return (d.organizationLabel || d.organizationName || d.organization || d.organizationId || "").toString();
-}
-
-function toDate(v) {
-  if (v === null || v === undefined || v === "") return null;
-  if (typeof v === "number") {
-    try { return new Date(v).toISOString().slice(0, 10); } catch (e) { return null; }
+  const scored = [];
+  for (const o of orgs) {
+    let c = 0;
+    for (const t of tokens) if (o.n.indexOf(t) !== -1) c++;
+    if (c > 0) scored.push({ uid: o.u, label: o.l, score: c, len: o.l.length });
   }
-  const s = v.toString();
-  return s.length >= 10 ? s.slice(0, 10) : s;
+  // most tokens matched first; shorter (more specific) label breaks ties
+  scored.sort((a, b) => b.score - a.score || a.len - b.len);
+
+  const matches = scored.slice(0, 8).map((m) => ({
+    uid: m.uid,
+    label: m.label,
+    score: m.score,
+    url: DECIS_WEB + "?query=" +
+         encodeURIComponent('organizationUid:"' + m.uid + '"') +
+         "&sort=recent&page=0",
+  }));
+
+  return json({ q, tokens, orgCount: orgs.length, matches });
+}
+
+// ── organisation index (cached) ─────────────────────────────────────────────
+async function loadOrgs(env) {
+  if (env && env.CHAT) {
+    try {
+      const raw = await env.CHAT.get(CACHE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && obj.t && Date.now() - obj.t < CACHE_TTL_MS && Array.isArray(obj.o))
+          return obj.o;
+      }
+    } catch (e) { /* fall through to refetch */ }
+  }
+  const orgs = await fetchAllOrgs();
+  if (env && env.CHAT && orgs.length) {
+    try { await env.CHAT.put(CACHE_KEY, JSON.stringify({ t: Date.now(), o: orgs })); }
+    catch (e) { /* cache is best-effort */ }
+  }
+  return orgs;
+}
+
+async function fetchAllOrgs() {
+  const out = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const u = ORGS_API + "?page=" + page + "&size=" + PAGE_SIZE;
+    const r = await fetch(u, { headers: { "Accept": "application/json" } });
+    if (!r.ok) break;
+    const d = await r.json();
+    const batch = d.organizations || d.content || d.results || [];
+    if (!batch.length) break;
+    for (const o of batch) {
+      const uid = (o.uid || o.id || o.organizationId || "").toString();
+      const label = (o.label || o.name || "").toString();
+      if (uid && label) out.push({ u: uid, l: label, n: deAccent(label) });
+    }
+    if (batch.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
+function tokenize(s) {
+  // unique, accent-stripped words of 3+ chars (so "ΤΑΜΕΙΟ", "ΣΚΑΛΑΣ" count,
+  // but noise like "ΚΑΙ", "ΤΟΥ" is dropped)
+  return Array.from(new Set(deAccent(s).split(/\s+/).filter((t) => t.length >= 3)));
+}
+
+function deAccent(s) {
+  return (s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }
