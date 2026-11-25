@@ -1,158 +1,73 @@
 """
-Contract Expiry Radar — build docs/expiry.html
-Finds public contracts that are still running and shows when each one ENDS,
-so you can approach the organisation before it goes back out to tender.
-Data: ΚΗΜΔΗΣ contracts (Συμβάσεις), which carry an explicit endDate.
-Public data, no login. Runs from GitHub Actions.
+EXPIRY RADAR — contracts still running, soonest to expire first.
+
+Rebuilt on the SAME contract store as ORGS / Contractors (data/contracts.jsonl),
+so every page gives the same answer. Was: its own live ΚΗΜΔΗΣ crawl (~18 min
+per run, its own logic). Now: seconds, no network.
+
+Categories = our service lines. Contracts whose title contradicts the CPV
+(subject_check == "mismatch") and republications are left out.
+
+Run:  python build_expiry.py
 """
-import os
+
 import json
-import time
-from datetime import date, datetime, timezone, timedelta
+import os
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-import requests
-
-CONTRACT_URL = "https://cerpp.eprocurement.gov.gr/khmdhs-opendata/contract"
+STORE = "data/contracts.jsonl"
 OUT = "docs/expiry.html"
-
-# How far back to look for SIGNED contracts (to catch long ones ending soon),
-# and how far FORWARD an end date can be to still be worth showing.
-MONTHS_BACK = 30
 FORWARD_LIMIT_DAYS = 760   # ~25 months of future expiries
 
-# Same categories as the tender radar — edit to match.
-CPV_CATEGORIES = {
-    "Έλεγχος": ["79212000-3", "79212100-4", "79212200-5", "79212300-6", "79212400-7", "79212500-8"],
-    "Λογιστικά & Φορολογικά": ["79200000-6", "79210000-9", "79211000-6", "79211100-7", "79220000-2", "79221000-9", "79222000-6"],
-    "Συμβουλευτική": ["79400000-8", "79410000-1", "79411000-8", "79411100-9", "79412000-5", "79413000-2", "79414000-9", "79418000-7", "79419000-4"],
-    "Νομικά": ["79100000-5", "79110000-8", "79111000-5", "79112000-2", "79140000-7"],
-    "Marketing & έρευνα": ["79300000-7", "79310000-0", "79320000-3", "79340000-9", "79341000-6"],
-    "Ανθρώπινο δυναμικό": ["79600000-0", "79610000-3"],
-    "Έργα & διοικητική υποστήριξη": ["79420000-4", "79421000-1", "79500000-9"],
-    "Κυβερνοασφάλεια": ["72220000-3", "72810000-1", "48730000-4"],
-}
-
-# The cyber CPVs are umbrella/IT codes (esp. 72220000-3 = general IT consulting).
-# A bare match floods this radar with generic IT. So the cyber category is
-# TITLE-GATED: a contract gets the Κυβερνοασφάλεια tag only if its title
-# actually mentions cyber / NIS 2 / information-security.
-CYBER_CAT = "Κυβερνοασφάλεια"
-CYBER_TITLE_KEYWORDS = [
-    "κυβερνοασφάλ", "κυβερνοασφαλ", "κυβερνοεπίθ", "ασφάλεια πληροφορ",
-    "ασφάλειας πληροφορ", "ασφάλεια δικτύ", "δικτύων και πληροφορ",
-    "nis2", "nis 2", "οδηγ nis", "5160", "information security",
-    "cybersecurity", "cyber security", "iso 27001", "27001",
-    "έλεγχος πληροφοριακ", "έλεγχο πληροφοριακ", "it audit", "computer audit",
+SERVICE_ORDER = [
+    "Εσωτερικός έλεγχος", "Οικονομικός έλεγχος / Ορκωτοί", "DPO / Προστασία δεδομένων",
+    "Διαχείριση κινδύνων", "Συμμόρφωση / Whistleblowing", "Χαρτογράφηση / Οργάνωση",
+    "Κυβερνοασφάλεια", "Λογιστικές υπηρεσίες", "Φορολογικές υπηρεσίες", "Μισθοδοσία",
+    "Επιχειρηματική / οικονομική συμβουλευτική",
 ]
-
-
-def title_is_cyber(title):
-    t = (title or "").lower()
-    return any(k in t for k in CYBER_TITLE_KEYWORDS)
-
-
-def date_windows(months_back, window_days=175):
-    end = date.today()
-    start = end - timedelta(days=int(months_back * 30.4))
-    windows, cur = [], start
-    while cur < end:
-        w_end = min(cur + timedelta(days=window_days), end)
-        windows.append((cur.isoformat(), w_end.isoformat()))
-        cur = w_end + timedelta(days=1)
-    return windows
-
-
-SESSION = requests.Session()
-try:
-    from requests.adapters import HTTPAdapter
-    from urllib3.util.retry import Retry
-    SESSION.mount("https://", HTTPAdapter(max_retries=Retry(
-        total=4, connect=4, read=4, backoff_factor=2.5,
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=frozenset(["GET", "POST"]))))
-except Exception:
-    pass
-
-
-def fetch_contracts(codes, dfrom, dto):
-    body = {"cpvItems": codes, "dateFrom": dfrom, "dateTo": dto}
-    out, page, fails = [], 0, 0
-    while True:
-        try:
-            r = SESSION.post(f"{CONTRACT_URL}?page={page}", json=body,
-                             headers={"Accept": "application/json"}, timeout=60)
-            r.raise_for_status()
-            data = r.json()
-        except Exception as e:
-            fails += 1
-            print(f"     page {page} failed ({type(e).__name__}); retry {fails}")
-            if fails >= 3:
-                print("     giving up on this window, moving on")
-                break
-            time.sleep(8 * fails)
-            continue
-        fails = 0
-        out.extend(data.get("content", []))
-        if data.get("last", True):
-            break
-        page += 1
-        if page > 25:
-            break
-        time.sleep(0.5)
-    return out
-
-
-def to_item(c):
-    members = ((c.get("contractingDataDetails") or {}).get("contractingMembersDataList")) or []
-    names = [m.get("name") for m in members if m.get("name")]
-    return {
-        "s": (c.get("title") or "").strip(),
-        "adam": c.get("referenceNumber"),
-        "end": c.get("endDate"),
-        "amount": c.get("contractBudget") or c.get("totalCostWithoutVAT"),
-        "org": (c.get("organization") or {}).get("value"),
-        "region": (c.get("nutsCode") or {}).get("value") or c.get("nutsCity"),
-        "holder": " / ".join(names) if names else None,
-        "cats": [],
-    }
 
 
 def collect():
     today = date.today().isoformat()
     forward = (date.today() + timedelta(days=FORWARD_LIMIT_DAYS)).isoformat()
-    windows = date_windows(MONTHS_BACK)
-    by_adam = {}
-    for cat, codes in CPV_CATEGORIES.items():
-        for dfrom, dto in windows:
-            for c in fetch_contracts(codes, dfrom, dto):
-                # Title-gate the cyber category so generic IT doesn't flood in.
-                if cat == CYBER_CAT and not title_is_cyber(c.get("title")):
-                    continue
-                if c.get("noEndDate"):
-                    continue
-                end = c.get("endDate")
-                if not end or not (today <= end[:10] <= forward):
-                    continue   # keep only contracts still running, ending within range
-                adam = c.get("referenceNumber")
-                if not adam:
-                    continue
-                if adam not in by_adam:
-                    by_adam[adam] = to_item(c)
-                if cat not in by_adam[adam]["cats"]:
-                    by_adam[adam]["cats"].append(cat)
-    items = list(by_adam.values())
-    items.sort(key=lambda x: x["end"] or "9999")   # soonest to expire first
+    items = []
+    with open(STORE, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            r = json.loads(line)
+            if r.get("superseded_by") or r.get("subject_check") == "mismatch":
+                continue
+            end = (r.get("end") or "")[:10]
+            if not end or not (today <= end <= forward):
+                continue
+            items.append({
+                "s": r.get("subject") or "",
+                "adam": r.get("adam"),
+                "end": end,
+                "amount": r.get("value"),
+                "org": r.get("org"),
+                "region": r.get("region"),
+                "holder": r.get("holder"),
+                "cats": [r.get("service")] if r.get("service") else [],
+            })
+    items.sort(key=lambda x: x["end"])
     return items
 
 
+def categories(items):
+    present = {c for it in items for c in it["cats"]}
+    return [s for s in SERVICE_ORDER if s in present] + sorted(present - set(SERVICE_ORDER))
+
+
 def build_html(items):
-    athens = datetime.now(ZoneInfo("Europe/Athens"))
-    stamp = athens.strftime("%d/%m · %H:%M")
+    stamp = datetime.now(ZoneInfo("Europe/Athens")).strftime("%d/%m · %H:%M")
     return (TEMPLATE
             .replace("__DATA__", json.dumps(items, ensure_ascii=False))
             .replace("__STAMP__", stamp)
-            .replace("__CATS__", json.dumps(list(CPV_CATEGORIES.keys()), ensure_ascii=False)))
+            .replace("__CATS__", json.dumps(categories(items), ensure_ascii=False)))
 
 
 def main():

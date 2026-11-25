@@ -4,19 +4,24 @@
   const TABS = [
     { key: "1", href: "index.html",       label: "Open tenders",     code: "OPEN" },
     { key: "2", href: "expiry.html",      label: "Expiry radar",     code: "EXP"  },
-    { key: "3", href: "accounts.html",    label: "Account map",      code: "ACC"  },
+    { key: "3", href: "orgs.html",         label: "Orgs · φορείς",     code: "ORGS" },
     { key: "4", href: "changes.html",     label: "What changed",     code: "CHG"  },
     { key: "5", href: "regulation.html",  label: "Regulatory radar", code: "REG"  },
     { key: "6", href: "contractors.html", label: "Contractors",      code: "CON"  },
     { key: "7", href: "news.html",        label: "NEWS",              code: "NEWS" },
     { key: "8", href: "chat.html",         label: "Chat",              code: "CHAT" },
-    { key: "9", href: "orgs.html",         label: "Orgs · φορείς",     code: "ORGS" },
   ];
 
   // Φάκελος φορέα (Gödel DES/HDS/ERN-style). "ORG ωρωπου | εσωτερικος ελεγχος"
   const ORG_VIEWS = { ORG: "des", DES: "des", INC: "inc", NEXT: "next", HIST: "hist" };
   const ORG_LABEL = { des: "Φάκελος φορέα", inc: "Ποιος κρατά τον φορέα", next: "Τι θα προκηρύξει", hist: "Ιστορικό φορέα" };
   function orgCmd(head, term) {
+    // ACC = the retired Account Map habit: "ACC DPO" (who has it) / "ACC ναουσα"
+    if (head === "ACC") {
+      return { href: "orgs.html" + (term ? "?acc=" + encodeURIComponent(term) : ""),
+               label: "Orgs (πρώην Account Map)" + (term ? ' · "' + term + '"' : ""),
+               code: "ACC" + (term ? " " + term : " <φορέας | υπηρεσία>") };
+    }
     const v = ORG_VIEWS[head];
     if (!v) return null;
     const href = "orgs.html" + (term ? "?view=" + v + "&q=" + encodeURIComponent(term) : "");
@@ -100,10 +105,10 @@
       '<div class="tc-row">' +
       '<span class="tc-prompt">&gt;</span>' +
       '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
-      'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   DIAV οικονομικές καταστάσεις λιμενικό ταμείο">' +
+      'placeholder="π.χ.  CON kps   ·   ORG ναουσα   ·   REG 4795   ·   DIAV οικονομικές καταστάσεις λιμενικό ταμείο">' +
       '<button id="densbtn" class="tc-dens" title="Πυκνότητα εμφάνισης">◧ Πυκνότητα</button>' +
       '<button id="themebtn" class="tc-theme" title="Θέμα για ΑΥΤΗ τη σελίδα (Gödel → Soft → Paper)">◐ Gödel</button>' +
-      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS ORGS · ORG/INC/NEXT &lt;φορέας&gt; · DIAV ↗</span>' +
+      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP CHG REG OPEN NEWS ORGS · ORG/INC/NEXT &lt;φορέας&gt; · DIAV ↗</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
     nav.parentNode.insertBefore(bar, nav);
@@ -127,8 +132,8 @@
       applyDensity(DENS[(i + 1) % DENS.length]);
     });
 
-    // Theme toggle — Gödel → Soft → Paper, remembered PER PAGE, so e.g. Account
-    // Map can be Paper while Open Tenders stays Gödel. (applyTheme also runs at
+    // Theme toggle — Gödel → Soft → Paper, remembered PER PAGE, so e.g. Orgs
+    // can be Paper while Open Tenders stays Gödel. (applyTheme also runs at
     // the very top of this file to avoid a dark flash on load.)
     const tb = document.getElementById("themebtn");
     if (tb) {
@@ -175,7 +180,7 @@
     }
 
     const oc = orgCmd(head, term);
-    if (oc) { out.push({ type: "go", label: oc.label, code: oc.code, key: "9", href: oc.href }); return out; }
+    if (oc) { out.push({ type: "go", label: oc.label, code: oc.code, key: "3", href: oc.href }); return out; }
 
     const exact = TABS.find(t => t.code === head);
     if (exact) {
@@ -304,7 +309,7 @@
       return out;
     }
     const ocx = orgCmd(dhead, dterm);
-    if (ocx) { out.push({ type: "go", label: ocx.label, code: ocx.code, key: "9", href: ocx.href }); return out; }
+    if (ocx) { out.push({ type: "go", label: ocx.label, code: ocx.code, key: "3", href: ocx.href }); return out; }
     // matching tabs first
     TABS.forEach(t => {
       if (!low || t.code.toLowerCase().startsWith(low) ||
@@ -385,7 +390,7 @@
   }
 
   function parseCommand(v) {
-    // Grammar:  <TAB> [term...]   e.g. "CON kps",  "ACC ναουσα",  "REG 4795"
+    // Grammar:  <TAB> [term...]   e.g. "CON kps",  "ORG ναουσα",  "REG 4795"
     //           <TAB>             e.g. "CON"       → tab, no filter
     //           <term...>         e.g. "ναουσα"    → default search (Contractors)
     const parts = v.trim().split(/\s+/);

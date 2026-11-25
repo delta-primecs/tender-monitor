@@ -44,6 +44,39 @@ SERVICE_ABBR = {
 
 CHK = {"confirmed": 0, "unverified": 1, "mismatch": 2}
 
+# Ported from the retired Account Map: a firm whose NAME says it does something
+# else (e.g. a "τεχνική" or "κατασκευαστική" firm holding Εσωτερικός έλεγχος) is
+# a strong sign the CPV is wrong. Such a contract never counts as "has" unless
+# its title explicitly confirms the service.
+NAME_INCOMPATIBLE = {
+    "Εσωτερικός έλεγχος": ["τεχνικ", "ενεργειακ", "κατασκευ", "μηχανικ", "εκπαιδευτικ",
+                           "καθαρι", "τροφι", "εστιατ", "κατασκηνωσ"],
+    "Οικονομικός έλεγχος / Ορκωτοί": ["τεχνικ", "ενεργειακ", "κατασκευ", "εκπαιδευτικ", "καθαρι"],
+    "Διαχείριση κινδύνων": ["εκπαιδευτικ", "καθαρι", "κατασκευ", "τροφι", "εστιατ"],
+    "Συμμόρφωση / Whistleblowing": ["τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι"],
+    "DPO / Προστασία δεδομένων": ["κατασκευ", "εκπαιδευτικ", "καθαρι", "τροφι", "εστιατ"],
+    "Χαρτογράφηση / Οργάνωση": ["τεχνικ", "ενεργειακ", "κατασκευ", "εκπαιδευτικ", "καθαρι",
+                                "τροφι", "εστιατ", "μηχανικ"],
+    "Λογιστικές υπηρεσίες": ["τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι", "μηχανικ"],
+    "Φορολογικές υπηρεσίες": ["τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι", "μηχανικ"],
+    "Μισθοδοσία": ["τεχνικ", "κατασκευ", "εκπαιδευτικ", "καθαρι", "μηχανικ"],
+    "Επιχειρηματική / οικονομική συμβουλευτική": ["εκπαιδευτικ", "καθαρι", "τροφι", "εστιατ"],
+    "Κυβερνοασφάλεια": ["κατασκευ", "ενεργειακ", "καθαρι", "τροφι", "εστιατ", "κατασκηνωσ"],
+}
+
+
+def _plain(s):
+    import unicodedata
+    return "".join(ch for ch in unicodedata.normalize("NFD", (s or "").lower())
+                   if unicodedata.category(ch) != "Mn")
+
+
+def firm_incompatible(holder, service, check):
+    if check == "confirmed":
+        return False          # the title itself confirms the service — trust it
+    h = _plain(holder)
+    return any(w in h for w in NAME_INCOMPATIBLE.get(service, []))
+
 
 def org_type(name):
     n = (name or "").upper()
@@ -137,6 +170,9 @@ def main():
             CHK.get(r.get("subject_check"), -1),
             1 if r.get("amendment") else 0,
             subj,
+            1 if firm_incompatible(r.get("holder"), r["service"], r.get("subject_check")) else 0,
+            r.get("end_est") or "",
+            1 if r.get("source") == "title" else 0,
         ])
 
     data = {
@@ -323,13 +359,14 @@ const norm = s => (s||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
 const median = a => { if(!a.length) return null; const b=[...a].sort((x,y)=>x-y); const m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; };
 
 // ── per-org model ──────────────────────────────────────────────────────────
-const C = D.c.map(r=>({o:r[0],s:r[1],h:r[2],v:r[3],sg:r[4],e:r[5],a:r[6],si:r[7],chk:r[8],am:r[9],subj:r[10]}));
+const C = D.c.map(r=>({o:r[0],s:r[1],h:r[2],v:r[3],sg:r[4],e:r[5],a:r[6],si:r[7],chk:r[8],am:r[9],subj:r[10],fw:r[11],es:r[12],ti:r[13]}));
+const doubtful = c => c.chk===2 || c.fw===1;   // title contradicts CPV, or firm name contradicts service
 const ORGS = D.orgs.map((o,i)=>({i, k:o.k, name:o.n, type:o.t, region:D.reg[o.r]||"", n:norm(o.n), cs:[]}));
 C.forEach(c=>ORGS[c.o].cs.push(c));
 
 function svcStatus(cs){
   // cs = contracts of ONE service for ONE org. Mismatch-titled ones never count.
-  const ok = cs.filter(c=>c.chk!==2);
+  const ok = cs.filter(c=>!doubtful(c));
   if(!ok.length) return cs.length ? {st:"warn"} : {st:"none"};
   const ends = ok.map(c=>c.e).filter(Boolean).sort();
   const maxEnd = ends.length ? ends[ends.length-1] : null;
@@ -351,7 +388,7 @@ ORGS.forEach(o=>{
   });
   // next upcoming expiry (future), any service
   let nx=null;
-  o.cs.forEach(c=>{ if(c.chk!==2 && c.e && daysTo(c.e)>=0 && (!nx || c.e<nx.e)) nx=c; });
+  o.cs.forEach(c=>{ if(!doubtful(c) && c.e && daysTo(c.e)>=0 && (!nx || c.e<nx.e)) nx=c; });
   o.next = nx;
   const last = [...o.cs].sort((a,b)=>b.sg.localeCompare(a.sg))[0];
   o.signer = last ? D.sign[last.si] : "";
@@ -372,7 +409,7 @@ function related(o){
 
 // ── SCREENER ───────────────────────────────────────────────────────────────
 const SVC_STATES = [["has","Έχει ενεργή"],["lacks","Λείπει (καμία σύμβαση)"],["noactive","Χωρίς ενεργή (λείπει ή έληξε)"],
-                    ["soon90","Λήγει ≤ 90 ημ."],["soon180","Λήγει ≤ 180 ημ."],["expired12","Έληξε τους τελευταίους 12 μήνες"]];
+                    ["soon30","Λήγει ≤ 30 ημ."],["soon90","Λήγει ≤ 90 ημ."],["soon180","Λήγει ≤ 180 ημ."],["expired12","Έληξε τους τελευταίους 12 μήνες"]];
 const TYPES = [...new Set(ORGS.map(o=>o.type))].sort();
 const REGIONS = [...new Set(ORGS.map(o=>o.region).filter(Boolean))].sort();
 let filters = [];        // {kind, ...}
@@ -427,6 +464,7 @@ function passes(o){
       if(st==="has" && !(s.st==="on"||s.st==="soon")) return false;
       if(st==="lacks" && !(s.st==="none"||s.st==="warn")) return false;
       if(st==="noactive" && (s.st==="on"||s.st==="soon")) return false;
+      if(st==="soon30" && !(s.st==="soon" && s.days<=30)) return false;
       if(st==="soon90" && !(s.st==="soon" && s.days<=90)) return false;
       if(st==="soon180" && s.st!=="soon") return false;
       if(st==="expired12" && !(s.st==="old" && s.days!=null && s.days>=-365)) return false;
@@ -522,7 +560,6 @@ function renderHead(){
       <a href="${diavLink(o.k)}" target="_blank" rel="noopener">Όλες οι αποφάσεις στη Διαύγεια ↗</a>
       <a href="${finLink(o.k)}" target="_blank" rel="noopener">Ισολογισμοί – Απολογισμοί ↗</a>
       <a href="diavgeia.html?q=${encodeURIComponent(o.name)}" target="_blank" rel="noopener">DIAV · θέμα + φορέας</a>
-      <a href="accounts.html?q=${encodeURIComponent(o.name)}">Account Map</a>
     </div>
     ${rel.length?`<div class="dos-meta" style="margin-top:12px"><span>Σχετικοί φορείς:</span></div>
       <div class="rel" style="padding:6px 0 0">${rel.map(r=>`<a href="?org=${encodeURIComponent(r.k)}" data-rel="${r.i}">${esc(r.name)}</a>`).join("")}</div>`:""}`;
@@ -541,8 +578,9 @@ function statusPill(s){
   if(s.st==="on")   return `<span class="pill p-on">Ενεργή έως ${fmtD(s.end)}</span>`;
   if(s.st==="soon") return `<span class="pill p-soon">Λήγει σε ${s.days} ημ. (${fmtD(s.end)})</span>`;
   if(s.st==="old")  return s.end ? `<span class="pill p-old">Έληξε ${fmtD(s.end)}</span>`
-                          : `<span class="pill p-old">Υπογράφηκε ${fmtD(s.cur&&s.cur.sg)} · χωρίς ημ. λήξης</span>`;
-  if(s.st==="warn") return `<span class="pill p-warn" title="Υπάρχει σύμβαση με αυτό το CPV αλλά ο τίτλος της δείχνει άλλη υπηρεσία">⚠ Μόνο με αντιφατικό τίτλο</span>`;
+                          : `<span class="pill p-old">Υπογράφηκε ${fmtD(s.cur&&s.cur.sg)} · χωρίς ημ. λήξης στο ΚΗΜΔΗΣ</span>`+
+                            (s.cur&&s.cur.es?`<div class="sub2" style="margin-top:3px">≈ λήξη ${fmtD(s.cur.es)} κατά το κείμενο της σύμβασης</div>`:"");
+  if(s.st==="warn") return `<span class="pill p-warn" title="Υπάρχει σύμβαση με αυτό το CPV, αλλά ο τίτλος ή η επωνυμία του αναδόχου δείχνουν άλλη δουλειά">⚠ Αμφίβολη σύμβαση — δες τίτλο/ανάδοχο</span>`;
   return `<span class="pill p-none">Δεν βρέθηκε σύμβαση</span>`;
 }
 function isOpp(s,si){ if(!CORE.includes(si)) return false;
@@ -584,15 +622,15 @@ function viewInc(o){
       const nm=D.hold[c.h]; if(!label[k]||nm.length>label[k].length) label[k]=nm; });
     const rows = Object.entries(by).map(([k,arr])=>{
       const sg = arr.map(c=>c.sg).filter(Boolean).sort(), en = arr.map(c=>c.e).filter(Boolean).sort();
-      const active = arr.some(c=>c.chk!==2 && c.e && daysTo(c.e)>=0);
-      const warn = arr.every(c=>c.chk===2);
+      const active = arr.some(c=>!doubtful(c) && c.e && daysTo(c.e)>=0);
+      const warn = arr.every(c=>doubtful(c));
       return {h:label[k], n:arr.length, v:arr.reduce((t,c)=>t+c.v,0), from:sg[0], to:en[en.length-1]||sg[sg.length-1], active, warn,
               med:median(arr.map(c=>c.v).filter(Boolean))};
     }).sort((a,b)=>(b.active-a.active)||(b.to||"").localeCompare(a.to||""));
     return `<div class="sec"><div class="sech">${esc(D.svc[si])}</div><table class="grid">
       <thead><tr><th>Ανάδοχος</th><th class="num">Συμβ.</th><th class="num">Σύνολο €</th><th class="num">Τυπικό ποσό €</th><th>Περίοδος</th><th></th></tr></thead><tbody>
       ${rows.map(r=>`<tr><td><a class="ext" href="contractors.html?q=${encodeURIComponent(r.h)}">${esc(r.h)}</a>
-        ${r.active?'<span class="pill p-on" style="margin-left:6px">ΕΝΕΡΓΟΣ</span>':""}${r.warn?'<span class="pill p-warn" style="margin-left:6px">⚠ τίτλος αντίθετος</span>':""}</td>
+        ${r.active?'<span class="pill p-on" style="margin-left:6px">ΕΝΕΡΓΟΣ</span>':""}${r.warn?'<span class="pill p-warn" style="margin-left:6px">⚠ αμφίβολη (τίτλος/επωνυμία)</span>':""}</td>
         <td class="num">${r.n}</td><td class="num">${fmtEur(r.v)}</td><td class="num">${fmtEur(r.med)}</td>
         <td>${fmtD(r.from)} → ${fmtD(r.to)}</td><td></td></tr>`).join("")}</tbody></table></div>`;
   }).join("");
@@ -603,7 +641,7 @@ function nextItems(o){
   const out=[];
   svcList().forEach(si=>{
     const s=o.bySvc[si];
-    const cs=o.cs.filter(c=>c.s===si && c.chk!==2);
+    const cs=o.cs.filter(c=>c.s===si && !doubtful(c));
     const vals=cs.map(c=>c.v).filter(Boolean);
     const durs=cs.filter(c=>c.sg&&c.e).map(c=>(dnum(c.e)-dnum(c.sg))/DAY/30.4).filter(m=>m>0&&m<120);
     const base={si, est:median(vals), dur:median(durs), cur:s.cur};
@@ -649,10 +687,10 @@ function viewHist(o){
   return `<div class="sec"><div class="sech">Ιστορικό συμβάσεων · ${cs.length}</div>
     <table class="grid"><thead><tr><th>Υπογραφή</th><th>Υπηρεσία</th><th>Ανάδοχος / τίτλος</th><th class="num">Αξία €</th><th>Λήξη</th><th></th></tr></thead><tbody>
     ${cs.map(c=>`<tr><td style="white-space:nowrap">${fmtD(c.sg)}</td><td>${esc(D.svc[c.s])}
-        ${c.chk===2?'<div><span class="pill p-warn">⚠ τίτλος αντίθετος</span></div>':""}${c.am?'<div><span class="pill p-old">ΠΑΡΑΤΑΣΗ</span></div>':""}</td>
+        ${c.chk===2?'<div><span class="pill p-warn">⚠ τίτλος αντίθετος</span></div>':""}${c.fw?'<div><span class="pill p-warn">⚠ επωνυμία αναδόχου</span></div>':""}${c.ti?'<div><span class="pill p-old" title="Βρέθηκε από τον τίτλο — το ΚΗΜΔΗΣ την έχει με άλλο CPV">βρέθηκε από τίτλο</span></div>':""}${c.am?'<div><span class="pill p-old">ΠΑΡΑΤΑΣΗ</span></div>':""}</td>
       <td><a class="ext" href="contractors.html?q=${encodeURIComponent(D.hold[c.h])}">${esc(D.hold[c.h])}</a>
         ${c.subj?`<div class="subject-line">${esc(c.subj)}</div>`:""}</td>
-      <td class="num">${fmtEur(c.v)}</td><td style="white-space:nowrap">${fmtD(c.e)}</td>
+      <td class="num">${fmtEur(c.v)}</td><td style="white-space:nowrap">${c.e?fmtD(c.e):(c.es?'≈ '+fmtD(c.es)+'<div class="sub2">από κείμενο</div>':'—')}</td>
       <td>${c.a?`<a class="ext" target="_blank" rel="noopener" href="${KHMDHS+c.a}">σύμβαση ↗</a>`:""}</td></tr>`).join("")
       || '<tr><td colspan="6" class="empty">Καμία σύμβαση.</td></tr>'}</tbody></table></div>`;
 }
@@ -697,6 +735,18 @@ function scrollSel(){ const r=document.querySelector("#tbody tr.sel"); if(r) r.s
   const v=(p.get("view")||"des").toLowerCase();
   const svc=p.get("svc");
   if(p.get("org")){ const o=ORGS.find(x=>x.k===p.get("org")); if(o){ addFilter("name"); openOrg(o.i,v,svc); return; } }
+  const acc=(p.get("acc")||"").trim();
+  if(acc){
+    // "ACC DPO" → everyone who HAS an active DPO (renewal targets);
+    // "ACC ναουσα" → that φορέας's dossier. Same habits as the old Account Map.
+    const si=findSvc(acc), r=resolveOrg(acc);
+    const svcWords=norm(acc).split(/\s+/).filter(w=>w.length>=3);
+    const svcHit = si!=="" && (/^(DPO|GDPR|NIS2?)$/i.test(acc.trim()) ||
+                   svcWords.every(w=>norm(D.svc[+si]).includes(w.slice(0,Math.max(3,w.length-2)))));
+    if(svcHit){ addFilter("svc",{svc:+si,state:"has"}); return; }
+    if(r.one){ addFilter("name",{q:acc}); openOrg(r.one.i,"des"); return; }
+    addFilter("name",{q:acc}); return;
+  }
   const q=(p.get("q")||"").trim();
   if(q){
     const [orgPart, svcPart] = q.split("|").map(s=>s.trim());
