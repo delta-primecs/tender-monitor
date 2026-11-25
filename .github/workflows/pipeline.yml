@@ -82,6 +82,11 @@ jobs:
         timeout-minutes: 30
         run: python build_dashboard.py
 
+      - name: 7b · Orgs (screener + dossiers)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python build_orgs.py
+
       - name: 8 · News
         continue-on-error: true
         timeout-minutes: 10

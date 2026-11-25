@@ -10,7 +10,18 @@
     { key: "6", href: "contractors.html", label: "Contractors",      code: "CON"  },
     { key: "7", href: "news.html",        label: "NEWS",              code: "NEWS" },
     { key: "8", href: "chat.html",         label: "Chat",              code: "CHAT" },
+    { key: "9", href: "orgs.html",         label: "Orgs · φορείς",     code: "ORGS" },
   ];
+
+  // Φάκελος φορέα (Gödel DES/HDS/ERN-style). "ORG ωρωπου | εσωτερικος ελεγχος"
+  const ORG_VIEWS = { ORG: "des", DES: "des", INC: "inc", NEXT: "next", HIST: "hist" };
+  const ORG_LABEL = { des: "Φάκελος φορέα", inc: "Ποιος κρατά τον φορέα", next: "Τι θα προκηρύξει", hist: "Ιστορικό φορέα" };
+  function orgCmd(head, term) {
+    const v = ORG_VIEWS[head];
+    if (!v) return null;
+    const href = "orgs.html" + (term ? "?view=" + v + "&q=" + encodeURIComponent(term) : "");
+    return { href, label: ORG_LABEL[v] + (term ? ' · "' + term + '"' : ""), code: head + (term ? " " + term : " <φορέας>") };
+  }
 
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
 
@@ -92,7 +103,7 @@
       'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   DIAV οικονομικές καταστάσεις λιμενικό ταμείο">' +
       '<button id="densbtn" class="tc-dens" title="Πυκνότητα εμφάνισης">◧ Πυκνότητα</button>' +
       '<button id="themebtn" class="tc-theme" title="Θέμα για ΑΥΤΗ τη σελίδα (Gödel → Soft → Paper)">◐ Gödel</button>' +
-      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS · DIAV → Διαύγεια ↗</span>' +
+      '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS ORGS · ORG/INC/NEXT &lt;φορέας&gt; · DIAV ↗</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
     nav.parentNode.insertBefore(bar, nav);
@@ -162,6 +173,9 @@
         code: "ΔΙΑΥΓΕΙΑ ↗", term: term });
       return out;
     }
+
+    const oc = orgCmd(head, term);
+    if (oc) { out.push({ type: "go", label: oc.label, code: oc.code, key: "9", href: oc.href }); return out; }
 
     const exact = TABS.find(t => t.code === head);
     if (exact) {
@@ -289,6 +303,8 @@
         code: "ΔΙΑΥΓΕΙΑ ↗", term: dterm });
       return out;
     }
+    const ocx = orgCmd(dhead, dterm);
+    if (ocx) { out.push({ type: "go", label: ocx.label, code: ocx.code, key: "9", href: ocx.href }); return out; }
     // matching tabs first
     TABS.forEach(t => {
       if (!low || t.code.toLowerCase().startsWith(low) ||
@@ -375,6 +391,8 @@
     const parts = v.trim().split(/\s+/);
     if (!parts.length || !parts[0]) return null;
     const head = parts[0].toUpperCase();
+    const oc = orgCmd(head, parts.slice(1).join(" ").trim());
+    if (oc) return { href: oc.href, label: oc.label };
     const tab = TABS.find(t => t.code === head);
     if (tab) {
       const term = parts.slice(1).join(" ").trim();
@@ -405,6 +423,7 @@
       '<div class="kbbox"><div class="kbtitle">Συντομεύσεις πληκτρολογίου</div>' +
       '<table>' + rows +
       '<tr><td class="k">`</td><td>Άνοιγμα γραμμής εντολών (από παντού)</td></tr>' +
+      '<tr><td class="k">ORG</td><td>Φάκελος φορέα — π.χ. ORG ωρωπου | εσωτερικος ελεγχος (INC: ποιος τον κρατά · NEXT: τι έρχεται)</td></tr>' +
       '<tr><td class="k">DIAV</td><td>Αναζήτηση στη Διαύγεια σε ξεχωριστό παράθυρο — π.χ. DIAV οικονομικές καταστάσεις λιμενικό ταμείο σκάλας ωρωπού</td></tr>' +
       '<tr><td class="k">/</td><td>Εστίαση στην αναζήτηση</td></tr>' +
       '<tr><td class="k">:</td><td>Γραμμή εντολών (tab ή αναζήτηση)</td></tr>' +
