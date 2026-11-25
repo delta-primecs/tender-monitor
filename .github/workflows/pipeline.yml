@@ -52,6 +52,11 @@ jobs:
         timeout-minutes: 30
         run: python ingest_contracts.py
 
+      - name: 1b · Fill gaps + title safety net (last 45 days)
+        continue-on-error: true
+        timeout-minutes: 20
+        run: python enrich_store.py --recent
+
       - name: 2 · What changed
         continue-on-error: true
         timeout-minutes: 15
