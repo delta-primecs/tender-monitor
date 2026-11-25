@@ -10,8 +10,9 @@ name: Pipeline (ingest + all pages)
 #   04:11 UTC = 06:11 Athens (winter) / 07:11 (summer)  ← fresh before calls
 #   17:11 UTC = 19:11 Athens (winter) / 20:11 (summer)
 #
-# Each step has continue-on-error: one failing page does not stop the others,
-# and whatever was built still gets published. The individual workflows
+# Each step has continue-on-error + its own time limit: one failing or hung
+# page (expiry once took 70 min) does not stop the others, and whatever was
+# built still gets published. The individual workflows
 # (Build News, Build Account Map, …) still exist for manual "Run workflow".
 on:
   schedule:
@@ -28,7 +29,7 @@ concurrency:
 jobs:
   pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 170
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -48,34 +49,42 @@ jobs:
 
       - name: 1 · Ingest new contracts
         continue-on-error: true
+        timeout-minutes: 30
         run: python ingest_contracts.py
 
       - name: 2 · What changed
         continue-on-error: true
+        timeout-minutes: 15
         run: python build_changes.py
 
       - name: 3 · Contractors
         continue-on-error: true
+        timeout-minutes: 15
         run: python build_contractors.py
 
       - name: 4 · Account map
         continue-on-error: true
+        timeout-minutes: 40
         run: python build_accounts.py
 
       - name: 5 · Regulatory radar
         continue-on-error: true
+        timeout-minutes: 20
         run: python build_regulation.py
 
       - name: 6 · Expiry radar
         continue-on-error: true
+        timeout-minutes: 50
         run: python build_expiry.py
 
       - name: 7 · Open tenders (dashboard)
         continue-on-error: true
+        timeout-minutes: 30
         run: python build_dashboard.py
 
       - name: 8 · News
         continue-on-error: true
+        timeout-minutes: 10
         run: python build_news.py
 
       - name: Publish everything in ONE push
