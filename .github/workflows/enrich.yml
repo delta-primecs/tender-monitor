@@ -12,6 +12,16 @@ on:
         required: false
         default: "full"
         type: string
+      from_year:
+        description: "full only: first year (default 2020)"
+        required: false
+        default: ""
+        type: string
+      to_year:
+        description: "full only: last year (default: up to today)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -23,15 +33,18 @@ concurrency:
 jobs:
   enrich:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install requests
-      - name: Enrich
-        run: python enrich_store.py "--${{ github.event.inputs.mode }}"
+      - name: Enrich (saves & pushes progress as it goes)
+        env:
+          ENRICH_COMMIT: "1"
+          PYTHONUNBUFFERED: "1"
+        run: python enrich_store.py "--${{ github.event.inputs.mode }}" ${{ github.event.inputs.from_year }} ${{ github.event.inputs.to_year }}
       - name: Save
         run: |
           git config user.name "tender-bot"

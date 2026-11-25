@@ -25,6 +25,8 @@ Every added/changed record is tagged so its origin is visible:
 
 Run:
   python enrich_store.py            full: A (from 2020) + B (from 2020) + C
+  python enrich_store.py --full 2023        full, but starting from that year
+  python enrich_store.py --full 2020 2021   full, only those years (resumable chunks)
   python enrich_store.py --recent   daily: A+B for the last 45 days, then C
   python enrich_store.py --text     only C (offline)
 """
@@ -32,6 +34,7 @@ Run:
 import html as htmllib
 import os
 import re
+import subprocess
 import sys
 import time
 from datetime import date, datetime, timedelta
@@ -65,8 +68,11 @@ TITLE_PHRASES = {
 TITLE_URL = ing.CONTRACT_URL
 
 
+END_AT = None   # optional upper bound (set by --full FROM TO)
+
+
 def windows_from(start):
-    out, cur, end = [], start, date.today()
+    out, cur, end = [], start, min(END_AT or date.today(), date.today())
     while cur <= end:
         w = min(cur + timedelta(days=SPAN), end)
         out.append((cur.isoformat(), w.isoformat()))
@@ -101,6 +107,27 @@ def fetch(body, stats=None, label=""):
         if stats is not None:
             stats.inc("windows incomplete")
     return out
+
+
+def checkpoint(store, msg):
+    """Save, and in GitHub Actions (ENRICH_COMMIT=1) commit+push the progress
+    so a timeout never throws away finished work."""
+    ing.save_store(store)
+    if os.environ.get("ENRICH_COMMIT") != "1":
+        return
+    g = lambda *a: subprocess.run(["git", *a], capture_output=True, text=True)
+    g("config", "user.name", "tender-bot")
+    g("config", "user.email", "tender-bot@users.noreply.github.com")
+    g("add", "data/")
+    if g("diff", "--staged", "--quiet").returncode == 0:
+        return
+    g("commit", "-m", f"Enrich store: {msg}")
+    for _ in range(3):
+        if g("pull", "--rebase", "origin", "main").returncode == 0 and g("push").returncode == 0:
+            print(f"   [saved & pushed: {msg}]")
+            return
+        time.sleep(8)
+    print(f"   [WARN: push failed for '{msg}' — will retry at next checkpoint]")
 
 
 def fingerprint(r):
@@ -149,11 +176,14 @@ def merge(store, p, fps, stats, *, source=None):
 def phase_a(store, fps, start, stats):
     wins = windows_from(start)
     print(f"A · CPV rescan: {len(wins)} windows from {start}")
+    t0 = time.time()
     for i, (a, b) in enumerate(wins, 1):
         batch = fetch({"cpvItems": ing.ALL_CODES, "dateFrom": a, "dateTo": b}, stats, f"CPV {a}")
         for c in batch:
             merge(store, ing.parse(c), fps, stats)
-        print(f"   [{i}/{len(wins)}] {a} → {b}: {len(batch)} contracts")
+        print(f"   [{i}/{len(wins)}] {a} → {b}: {len(batch)} contracts  ({time.time()-t0:.0f}s)", flush=True)
+        if i % 8 == 0:
+            checkpoint(store, f"CPV rescan up to {b}")
         time.sleep(0.6)
 
 
@@ -180,7 +210,8 @@ def phase_b(store, fps, start, stats):
                     if merge(store, p, fps, stats, source="title"):
                         found += 1
                 time.sleep(0.4)
-        print(f"   {svc}: +{found} contracts found only by title")
+        print(f"   {svc}: +{found} contracts found only by title", flush=True)
+        checkpoint(store, f"title net · {svc}")
 
 
 # ── C · end date ESTIMATE from the contract text ────────────────────────────
@@ -246,10 +277,15 @@ def main():
 
     if mode in ("--full", "--recent"):
         start = FULL_FROM if mode == "--full" else date.today() - timedelta(days=RECENT_DAYS)
+        if mode == "--full" and len(sys.argv) > 2:
+            start = date(int(sys.argv[2]), 1, 1)
+        if mode == "--full" and len(sys.argv) > 3:
+            global END_AT
+            END_AT = date(int(sys.argv[3]), 12, 31)
         phase_a(store, fps, start, stats)
-        ing.save_store(store)                 # checkpoint
+        checkpoint(store, "CPV rescan done")
         phase_b(store, fps, start, stats)
-        ing.save_store(store)
+        checkpoint(store, "title net done")
     phase_c(store, stats)
     ing.save_store(store)
 
