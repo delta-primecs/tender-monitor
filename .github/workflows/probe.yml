@@ -1,0 +1,21 @@
+name: API probe (dev)
+
+# Dev tool: prints what the public ΚΗΜΔΗΣ / Διαύγεια APIs accept & return.
+# Manual only. Commits nothing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python tools/probe.py
