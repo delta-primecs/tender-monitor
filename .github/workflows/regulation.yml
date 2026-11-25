@@ -1,8 +1,6 @@
 name: Build Regulatory Radar
 
 on:
-  schedule:
-    - cron: "38 2,4,17 * * *"   # ~25 min after ingest
   workflow_dispatch:
 
 permissions:

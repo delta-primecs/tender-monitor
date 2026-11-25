@@ -20,6 +20,7 @@ import json
 import time
 from collections import defaultdict
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -353,7 +354,7 @@ def main():
     rows = collect()
     accounts = build_accounts(rows)
     os.makedirs("docs", exist_ok=True)
-    athens = datetime.now(timezone(timedelta(hours=3)))
+    athens = datetime.now(ZoneInfo("Europe/Athens"))
     html = (TEMPLATE
             .replace("__DATA__", json.dumps(accounts, ensure_ascii=False))
             .replace("__SERVICES__", json.dumps(list(SERVICES.keys()), ensure_ascii=False))

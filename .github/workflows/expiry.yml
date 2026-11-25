@@ -1,8 +1,6 @@
 name: Build Expiry Radar
 
 on:
-  schedule:
-    - cron: "43 2,4,17 * * *"   # ~30 min after ingest (slow)
   workflow_dispatch:
 
 permissions:

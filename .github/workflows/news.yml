@@ -3,7 +3,10 @@ name: Build News
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes
+    # Pipeline builds news 3x/day (incl. early morning). These are 2 extra
+    # daytime refreshes: 08:40 & 12:40 UTC = 10:40 & 14:40 Athens (winter).
+    # (Was every 30 min - too many pushes for the Cloudflare build limit.)
+    - cron: "40 8,12 * * *"
 
 permissions:
   contents: write

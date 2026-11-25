@@ -7,7 +7,7 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 :root{
   --page:#0a0e14; --panel:#0f141c; --panel-2:#131a24; --card:#0f141c;
-  --text:#d4dae3; --bright:#f0f4f9; --muted:#5f6e82;
+  --text:#d4dae3; --bright:#f0f4f9; --muted:#7d8b9e;
   --hair:#1c2530; --hair2:#26313f;
   --accent:#3ddc84; --accent-dim:#1f5f3f;
   --amber:#e8a13a; --amber-bg:#2a2010;
@@ -21,6 +21,16 @@
   --new:var(--green); --new-bg:var(--green-bg); --upd:var(--amber);
   --upd-bg:var(--amber-bg); --has:var(--accent); --has-bg:var(--green-bg);
   --tag:var(--muted); --tag-bg:var(--panel-2); --link-ink:var(--link);
+  /* page-local color vars → follow the active theme (were hard-coded dark) */
+  --purple:#c58be0; --purple-bg:#241a2e; --blue-bg:#12233a;
+  --warn:var(--amber); --warn-bg:var(--amber-bg);
+  --signal:var(--amber); --signal-bg:var(--amber-bg);
+  --hot:var(--red); --hot-bg:var(--red-bg);
+  --gap-c:var(--red); --gap-bg:var(--red-bg);
+  --live:var(--accent);
+  --c-audit:var(--green); --c-audit-bg:var(--green-bg);
+  --c-acct:var(--link); --c-acct-bg:var(--blue-bg);
+  --c-cons:var(--purple); --c-cons-bg:var(--purple-bg);
 }
 html,body{background:var(--page)!important;color:var(--text)!important}
 body{font-family:var(--mono)!important;-webkit-font-smoothing:antialiased}
@@ -87,7 +97,9 @@ button.active,.pill.active,.chip.active{
 /* Big hero titles that were dark-on-light → make bright */
 h1,h2,h3{color:var(--bright)}
 /* Muted hero subtitles that became invisible on dark */
-[class*="sub"],[class*="muted"],.small,.dim{color:var(--muted)!important}
+/* NB: must NOT hit .subject (the tender title) — it made the most important
+   text the dimmest on the card. */
+[class*="sub"]:not(.subject):not([class*="subject"]),[class*="muted"],.small,.dim{color:var(--muted)!important}
 #cmdbar{position:fixed;inset:0;background:rgba(5,8,12,.6);display:none;
        align-items:flex-start;justify-content:center;z-index:9999}
 #cmdbar.show{display:flex}
@@ -262,3 +274,80 @@ body{padding-left:16px!important;padding-right:16px!important}
 .fresh-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
   margin-right:6px;vertical-align:middle}
 .fresh-lab{font-weight:700;font-size:10px;letter-spacing:.03em}
+
+/* ── Comfort fixes: kill the white flashes ────────────────────────────────
+   The pages were first designed light, then darkened by this file. A few
+   light colors leaked through (table header, amount chips, row hovers) and
+   flashed bright on a dark page. Pin them to theme variables so they follow
+   whatever theme is active. */
+th{background:var(--panel)!important}
+tr.group-head td{background:var(--panel-2)!important;color:var(--bright)!important}
+.profile{background:var(--panel-2)!important}
+.row:hover,.item:hover,tr:hover td{background:var(--panel-2)!important}
+.amount{background:var(--amber-bg)!important;color:var(--amber)!important}
+.amount.unknown{background:var(--panel-2)!important;color:var(--muted)!important}
+.pill.warn,.pill.badfit{background:var(--red-bg)!important;color:var(--red)!important}
+.pill.umbrella{background:var(--amber-bg)!important;color:var(--amber)!important}
+.btn[disabled]{background:var(--panel-2)!important;color:var(--muted)!important}
+.cw-head{background:var(--panel-2)!important}
+.subject{color:var(--bright)!important}
+
+/* ── Themes (per page, toggled in the command bar) ────────────────────────
+   godel : the original sharp terminal look (default)
+   soft  : dark but lower contrast, readable sans for text
+   paper : light, warm — for long reading in daylight
+   Monospace stays where it means something: the command bar, keys, codes. */
+:root{--code:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+      --sans:"Segoe UI","Inter",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif}
+
+html[data-theme="soft"]{
+  --page:#171c23; --panel:#1d232b; --panel-2:#232a33; --card:#1d232b;
+  --text:#c9d0d9; --bright:#e8ecf0; --muted:#8e99a8;
+  --hair:#2a313b; --hair2:#353e4a;
+  --accent:#5cc995; --accent-dim:#24453a;
+  --amber:#d9a45e; --amber-bg:#33291b;
+  --red:#e3847a; --red-bg:#3a2321;
+  --green:#5cc995; --green-bg:#1f3a2d;
+  --link:#86b9ea;
+  --purple:#c39be0; --purple-bg:#2e2638; --blue-bg:#1e2d40;
+  --mono:var(--sans);
+}
+html[data-theme="paper"]{
+  --page:#f2f0eb; --panel:#faf9f6; --panel-2:#f1eee7; --card:#ffffff;
+  --text:#2d323a; --bright:#14181d; --muted:#667080;
+  --hair:#e3dfd6; --hair2:#d3cdc1;
+  --accent:#1b7f4d; --accent-dim:#dcefe3;
+  --amber:#8f5d0f; --amber-bg:#f6ecd2;
+  --red:#b13a2d; --red-bg:#f8e1dc;
+  --green:#1b7f4d; --green-bg:#e1f2e8;
+  --link:#1c5fb0;
+  --purple:#74399a; --purple-bg:#efe4f5; --blue-bg:#e2ecf8;
+  --mono:var(--sans);
+}
+/* readable text, numbers that line up */
+html[data-theme="soft"] body,html[data-theme="paper"] body{
+  font-family:var(--sans)!important;font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:auto}
+html[data-theme="soft"] .subject,html[data-theme="paper"] .subject{font-size:15px;line-height:1.5}
+/* the terminal bits keep the mono identity */
+html[data-theme] #topcmd,html[data-theme] #topcmd *,
+html[data-theme] .kbd,html[data-theme] .tc-key,html[data-theme] .ci-key,
+html[data-theme] #cmdbar,html[data-theme] #cmdbar *,
+html[data-theme] .db-stamp,html[data-theme] .ada,html[data-theme] code{
+  font-family:var(--code)!important}
+/* calmer labels: less shouting from UPPERCASE + wide tracking */
+html[data-theme="soft"] .deskbar .seg button,html[data-theme="paper"] .deskbar .seg button,
+html[data-theme="soft"] th,html[data-theme="paper"] th{letter-spacing:.02em}
+/* paper: dark overlays & shadows would look heavy on light */
+html[data-theme="paper"] #cmdbar,html[data-theme="paper"] #kbhelp{background:rgba(40,44,52,.35)}
+html[data-theme="paper"] .cmdbox,html[data-theme="paper"] .kbbox,
+html[data-theme="paper"] .cw-panel{box-shadow:0 10px 30px rgba(20,24,30,.18)}
+html[data-theme="paper"] #cw-bubble{box-shadow:0 4px 14px rgba(20,24,30,.2)}
+html[data-theme="paper"] ::-webkit-scrollbar-thumb{background:var(--hair2)}
+
+/* theme button = same look as the density button */
+.tc-theme{font:inherit;font-family:var(--code);font-size:11px;font-weight:700;
+  color:var(--muted);background:var(--page);border:1px solid var(--hair2);
+  padding:5px 10px;cursor:pointer;white-space:nowrap;text-transform:uppercase;
+  letter-spacing:.04em;margin-left:6px}
+.tc-theme:hover{color:var(--accent);border-color:var(--accent-dim)}

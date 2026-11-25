@@ -9,6 +9,7 @@ import os
 import json
 import time
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -146,7 +147,7 @@ def collect():
 
 
 def build_html(items):
-    athens = datetime.now(timezone(timedelta(hours=3)))
+    athens = datetime.now(ZoneInfo("Europe/Athens"))
     stamp = athens.strftime("%d/%m · %H:%M")
     return (TEMPLATE
             .replace("__DATA__", json.dumps(items, ensure_ascii=False))

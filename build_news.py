@@ -16,6 +16,7 @@ import html
 import time
 import json
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import feedparser
 
@@ -112,7 +113,7 @@ def main():
           f"({n_dead} deadlines) from "
           f"{len(set(i['source'] for i in deduped))} live sources")
 
-    stamp = datetime.now(timezone.utc).astimezone().strftime("%d/%m/%Y %H:%M")
+    stamp = datetime.now(ZoneInfo("Europe/Athens")).strftime("%d/%m/%Y %H:%M")
     write_page(deduped, stamp)
 
 

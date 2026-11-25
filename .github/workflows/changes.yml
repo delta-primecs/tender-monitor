@@ -1,8 +1,6 @@
 name: Build Changes Feed
 
 on:
-  schedule:
-    - cron: "25 2,4,17 * * *"   # ~15 min after ingest
   workflow_dispatch:
 
 permissions:

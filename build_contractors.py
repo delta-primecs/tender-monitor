@@ -8,6 +8,7 @@ service lines, and downloads exactly that view as a CSV that opens in Excel.
 import os
 import json
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 STORE = "data/contracts.jsonl"
 OUT = "docs/contractors.html"
@@ -48,7 +49,7 @@ def load_store():
 def main():
     rows = load_store()
     os.makedirs("docs", exist_ok=True)
-    athens = datetime.now(timezone(timedelta(hours=3)))
+    athens = datetime.now(ZoneInfo("Europe/Athens"))
     html = (TEMPLATE
             .replace("__DATA__", json.dumps(rows, ensure_ascii=False))
             .replace("__STAMP__", athens.strftime("%d/%m/%Y %H:%M")))

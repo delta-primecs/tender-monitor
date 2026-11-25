@@ -1,0 +1,97 @@
+name: Pipeline (ingest + all pages)
+
+# ONE run builds everything and makes ONE push.
+# Why: every push to GitHub = one Cloudflare Pages build, and the free plan
+# allows ~500 builds/month. The old setup (8 workflows, each pushing on its
+# own) made ~16 pushes/day ≈ 490/month — right at the limit. This makes 3/day.
+#
+# Times are UTC (GitHub cron has no time zones):
+#   02:11 UTC = 04:11 Athens (winter) / 05:11 (summer)
+#   04:11 UTC = 06:11 Athens (winter) / 07:11 (summer)  ← fresh before calls
+#   17:11 UTC = 19:11 Athens (winter) / 20:11 (summer)
+#
+# Each step has continue-on-error: one failing page does not stop the others,
+# and whatever was built still gets published. The individual workflows
+# (Build News, Build Account Map, …) still exist for manual "Run workflow".
+on:
+  schedule:
+    - cron: "11 2,4,17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install OCR tools (tesseract + Greek, poppler)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ell poppler-utils
+
+      - name: Install Python dependencies
+        run: pip install requests pdfplumber pytesseract pdf2image feedparser
+
+      - name: 1 · Ingest new contracts
+        continue-on-error: true
+        run: python ingest_contracts.py
+
+      - name: 2 · What changed
+        continue-on-error: true
+        run: python build_changes.py
+
+      - name: 3 · Contractors
+        continue-on-error: true
+        run: python build_contractors.py
+
+      - name: 4 · Account map
+        continue-on-error: true
+        run: python build_accounts.py
+
+      - name: 5 · Regulatory radar
+        continue-on-error: true
+        run: python build_regulation.py
+
+      - name: 6 · Expiry radar
+        continue-on-error: true
+        run: python build_expiry.py
+
+      - name: 7 · Open tenders (dashboard)
+        continue-on-error: true
+        run: python build_dashboard.py
+
+      - name: 8 · News
+        continue-on-error: true
+        run: python build_news.py
+
+      - name: Publish everything in ONE push
+        run: |
+          git config user.name "tender-bot"
+          git config user.email "tender-bot@users.noreply.github.com"
+          git add data/ docs/
+          if git diff --staged --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git commit -m "Pipeline update $(TZ=Europe/Athens date +'%Y-%m-%d %H:%M')"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "Published on attempt $i."; exit 0
+            fi
+            echo "Push attempt $i failed - retrying in 10s."; sleep 10
+          done
+          exit 1

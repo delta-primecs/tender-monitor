@@ -11,6 +11,7 @@ arrive over the coming days.
 import os
 import json
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 CHANGES = "data/changes.jsonl"
 OUT = "docs/changes.html"
@@ -44,7 +45,7 @@ def services_in(events):
 def main():
     events = load_events()
     os.makedirs("docs", exist_ok=True)
-    athens = datetime.now(timezone(timedelta(hours=3)))
+    athens = datetime.now(ZoneInfo("Europe/Athens"))
     html = (TEMPLATE
             .replace("__DATA__", json.dumps(events, ensure_ascii=False))
             .replace("__SERVICES__", json.dumps(services_in(events), ensure_ascii=False))

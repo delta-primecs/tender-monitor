@@ -14,6 +14,19 @@
 
   const here = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
 
+  // ── Theme (per page) — applied immediately, before anything else renders ──
+  const THEMES = ["godel", "soft", "paper"];
+  const THEME_LABEL = { godel: "◐ Gödel", soft: "◑ Soft", paper: "○ Paper" };
+  const themeKey = () => "tr_theme:" + (here().replace(/\.html$/, "") || "index");
+  function applyTheme(t) {
+    if (t === "godel" || !THEMES.includes(t)) document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+  }
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") || "godel";
+  }
+  try { applyTheme(localStorage.getItem(themeKey()) || "godel"); } catch (e) {}
+
   // ── Διαύγεια: free-text search opened in a SEPARATE window ───────────────
   // Type "DIAV <όροι>" (also ΔΙΑΥΓΕΙΑ / DY) in the command bar and our own
   // Διαύγεια results page opens in its own window, showing the decisions for
@@ -78,6 +91,7 @@
       '<input id="tcinput" autocomplete="off" spellcheck="false" ' +
       'placeholder="π.χ.  CON kps   ·   ACC ναουσα   ·   REG 4795   ·   DIAV οικονομικές καταστάσεις λιμενικό ταμείο">' +
       '<button id="densbtn" class="tc-dens" title="Πυκνότητα εμφάνισης">◧ Πυκνότητα</button>' +
+      '<button id="themebtn" class="tc-theme" title="Θέμα για ΑΥΤΗ τη σελίδα (Gödel → Soft → Paper)">◐ Gödel</button>' +
       '<span class="tc-hint">` για άνοιγμα · &lt;TAB&gt; &lt;όρος&gt; · CON EXP ACC CHG REG OPEN NEWS · DIAV → Διαύγεια ↗</span>' +
       '</div>' +
       '<div class="tc-list" id="tclist"></div>';
@@ -101,6 +115,22 @@
       const i = DENS.indexOf(document.documentElement.getAttribute("data-density") || "comfortable");
       applyDensity(DENS[(i + 1) % DENS.length]);
     });
+
+    // Theme toggle — Gödel → Soft → Paper, remembered PER PAGE, so e.g. Account
+    // Map can be Paper while Open Tenders stays Gödel. (applyTheme also runs at
+    // the very top of this file to avoid a dark flash on load.)
+    const tb = document.getElementById("themebtn");
+    if (tb) {
+      tb.textContent = THEME_LABEL[currentTheme()];
+      tb.addEventListener("click", (e) => {
+        e.preventDefault();
+        const i = THEMES.indexOf(currentTheme());
+        const next = THEMES[(i + 1) % THEMES.length];
+        applyTheme(next);
+        try { localStorage.setItem(themeKey(), next); } catch (err) {}
+        tb.textContent = THEME_LABEL[next];
+      });
+    }
 
     const input = document.getElementById("tcinput");
     input.addEventListener("input", () => renderTopSuggestions(input.value.trim()));

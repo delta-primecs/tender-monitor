@@ -1,8 +1,6 @@
 name: Build Contractors
 
 on:
-  schedule:
-    - cron: "28 2,4,17 * * *"   # ~15 min after ingest
   workflow_dispatch:
 
 permissions:

@@ -14,6 +14,7 @@ import os
 import json
 import time
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -141,7 +142,7 @@ def collect():
 def main():
     items = collect()
     os.makedirs("docs", exist_ok=True)
-    athens = datetime.now(timezone(timedelta(hours=3)))
+    athens = datetime.now(ZoneInfo("Europe/Athens"))
     html = (TEMPLATE
             .replace("__DATA__", json.dumps(items, ensure_ascii=False))
             .replace("__STAMP__", athens.strftime("%d/%m/%Y %H:%M")))

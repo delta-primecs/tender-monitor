@@ -9,6 +9,7 @@ import sys
 import json
 import time
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -138,7 +139,7 @@ def collect():
 
 
 def build_html(items):
-    athens = datetime.now(timezone(timedelta(hours=3)))
+    athens = datetime.now(ZoneInfo("Europe/Athens"))
     stamp = athens.strftime("%d/%m · %H:%M")
     firm = f" · {FIRM_NAME}" if FIRM_NAME else ""
     cats = json.dumps(list(CPV_CATEGORIES.keys()), ensure_ascii=False)
