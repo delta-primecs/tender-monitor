@@ -57,6 +57,11 @@ jobs:
         timeout-minutes: 20
         run: python enrich_store.py --recent
 
+      - name: 1c · Drop republished duplicates
+        continue-on-error: true
+        timeout-minutes: 2
+        run: python dedupe_store.py
+
       - name: 2 · What changed
         continue-on-error: true
         timeout-minutes: 15

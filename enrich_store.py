@@ -131,7 +131,8 @@ def checkpoint(store, msg):
 
 
 def fingerprint(r):
-    return (r.get("holder"), str(r.get("orgkey")), r.get("value"), r.get("signed"), r.get("end"))
+    import dedupe_store
+    return dedupe_store.key(r)
 
 
 class Stats(dict):
